@@ -1,6 +1,9 @@
 package GoogleParser;
 
 use ParsingFramework::FileParser;
+use Parsers::RateMdsParser;
+use Parsers::VitalsParser;
+use Parsers::HealthGradesParser;
 @ISA = ("FileParser");
 
 # Google parser - Wraps several different parsers - one that gets the links
@@ -17,7 +20,11 @@ sub new {
     my $self = $class->SUPER::new();
     my $self->{RESULTDIR} = shift;
     my $self->{INITED} = 0;
-    my $self->{SUBPARSERS} = {};
+    my $self->{SUBPARSERS} = {
+	'ratemds' => RateMdsParser->new(),
+	'vitals' => VitalsParser->new(),
+	'healthgrades' => HealthGradesParser->new()
+    };
     bless($self, $class);
     return $self;
 }
@@ -39,7 +46,7 @@ sub teardown() {
     foreach my $k (keys($self->{SUBPARSERS})) {
 	$self->{SUBPARSERS}{$k}->teardown();
     }
-    $self->{INITED} = 1;
+    $self->{INITED} = 0;
 }
 
 sub parse {
