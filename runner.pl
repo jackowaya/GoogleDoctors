@@ -5,11 +5,11 @@ use strict;
 use warnings;
 
 use FindBin;
-# TODO: Can we do this without putting it in site_perl?
+use lib "$FindBin::Bin/..";
 use ParsingFramework::ParsingRunner;
 
 use GoogleDownloader;
-use GoogleParser
+use GoogleParser;
 
 my $usage = "Usage runner.pl [-s|--skip-download] input-path download-path results-path\n";
 
@@ -29,10 +29,13 @@ if (scalar(@ARGV) != 3) {
     exit(0);
 }
 
+my $inputFile = shift @ARGV;
 my $downloader = GoogleDownloader->new($skipDownload, shift @ARGV);
-my $parser = GoogleParser->new($ARGV[1]);
+my $parser = GoogleParser->new(shift @ARGV);
+$parser->init();
 
 my $runner = ParsingRunner->new($downloader, $parser);
 
-$runner->run(shift @ARGV);
+$runner->run($inputFile);
 
+$parser->teardown();

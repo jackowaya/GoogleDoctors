@@ -8,27 +8,30 @@ use ParsingFramework::FileParser;
 use strict;
 use HTML::Tree;
 use HTML::TreeBuilder;
-use ParserCommon;
+use Parsers::ParserCommon;
 
 sub new {
     my $class = shift;
     my $self = $class->SUPER::new();
-    my $self->{RESULTDIR} = shift;
-    my $self->{INITED} = 0;
+    $self->{RESULTDIR} = shift;
+    $self->{INITED} = 0;
     bless($self, $class);
     return $self;
 }
 
 sub init() {
     # Initializes this parser and sub-parsers
-    open(MYOUT, $self->{RESULTDIR} . "/rateMdsResults.txt", "w");
-    $self->{OUTHANDLE} = MYOUT;
-    print $self->{OUTHANDLE} "ID\tReview-LastName\tReview-Firstname\tRating\n";
+    my $self = shift;
+    open($self->{OUTHANDLE}, "> $self->{RESULTDIR}/rateMdsResults.txt") or die "Could not open ratemds results $!";
+    my $handle = $self->{OUTHANDLE};
+    print $handle "ID\tReview-LastName\tReview-Firstname\tRating\n";
     $self->{INITED} = 1;
 }
 
 sub teardown() {
-    close($self->{OUTHANDLE});
+    my $self = shift;
+    my $handle = $self->{OUTHANDLE};
+    close($handle);
     $self->{INITED} = 0;
 }
 
@@ -39,20 +42,34 @@ sub parse {
     my $path = shift;
     
     my $tree = HTML::Tree->new_from_file($path);
-    my $nameElem = $tree->look_down(_tag, 'span', 'class', 'fn');
-    
-    my $fullName = $nameElem->text();
+    my $nameElem = $tree->look_down('class', 'fn');
 
-    my ($firstName, $lastName) = parseName($fullName);
+    if (!$nameElem) {
+        my $handle = $self->{OUTHANDLE};
+	print $handle "$doctorId\t--\t--\t--\n";
+	print STDERR "Bad RateMds page $path\n";
+	return;
+    }
 
-    my $ratingRow = $tree->look_down(_tag, 'tr', sub {
-	$_->text() =~ m/Overall\s+Quality\*/;
-				     }
-	);
-    my @ratingRowCells = $ratingRow->look_down(_tag, 'td');
-    my $rating = $ratingRowCells[3]->text();
+    my $fullName = $nameElem->as_text();
 
-    print $self->{OUTHANDLE} "$doctorId\t$lastName\t$firstName\t$rating\n";
+    my ($firstName, $lastName) = ParserCommon::parseName($fullName);
+
+    # The last one that matches is the one we want.
+    my @ratingRows = $tree->look_down(sub {
+         $_[0]->tag() eq 'tr' &&
+         $_[0]->as_text() =~ m/Overall\s+Quality\*/
+    });
+    my $ratingRow = pop(@ratingRows);
+
+    my $rating = "--";
+    if ($ratingRow) {
+	# May not have ratings yet.
+	my @ratingRowCells = $ratingRow->look_down('_tag', 'td');
+	$rating = $ratingRowCells[2]->as_text();
+    }
+    my $handle = $self->{OUTHANDLE};
+    print $handle "$doctorId\t$lastName\t$firstName\t$rating\n";
 }
 
 1;

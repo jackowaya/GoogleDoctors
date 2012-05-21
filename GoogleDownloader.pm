@@ -87,10 +87,16 @@ sub download {
 
 sub outputPaths {
     my $self = shift;
-    opendir(DIR, $infolder);
+    opendir(DIR, $self->{OUTPUTDIR});
     my @files = readdir(DIR);
     closedir(DIR);
-    return @files;
+    my @res;
+    foreach my $file (@files) {
+	if ($file !~ /^\.*$/) {
+	    push(@res, $self->{OUTPUTDIR} . "/" . $file);
+	}
+    }
+    return @res;
 }
 
 sub generateSearchUri {
@@ -181,7 +187,7 @@ sub readCSV {
 	my @columnNames;
 	if ($csv->parse($lines[0])) {
 		@columnNames = $csv->fields();
-		for (my $i = 0; $i < scalar(@columnNames), $i++) {
+		for (my $i = 0; $i < scalar(@columnNames); $i++) {
 		    $columnNames[$i] = lc($columnNames[$i]);
 		}
 	
