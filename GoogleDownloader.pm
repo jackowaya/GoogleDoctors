@@ -52,37 +52,41 @@ sub download {
 	my %doc = %$docRef;
 	
 	$filename = "$outfolder/$doc{'sn'}.1.html";
-	
-	# Get the first page and its links, then the next page, then pause.
-	my $mech = new WWW::Mechanize;
-	$mech->get($myURI);
-		
-	$mech->save_content($filename);
-		
-	print "Wrote $myURI to $filename\n";
+	my $subfolder = "$outfolder/$doc{'sn'}.1";
 
-	$self->getSubLinks($filename, $outfolder, "$doc{'sn'}.1");
+	# Get the first page and its links, then the next page, then pause.
+	$self->getSearchAndSubs($myURI, $filename, $subfolder, "$doc{'sn'}.1");
 	sleep 15;
 	
 	# second page!
 	$myURI = $self->generateSearchUri($docRef, 2);
-	
-	$mech = new WWW::Mechanize;
 	$filename = "$outfolder/$doc{'sn'}.2.html";
-	
-	# Get the first page and its links, then the next page, then pause.
-	$mech->get($myURI);	
-	$mech->save_content($filename);
-		
-	print "Wrote $myURI to $filename\n";
-
-	$self->getSubLinks($filename, $outfolder, "$doc{'sn'}.2");
+	$subfolder = "$outfolder/$doc{'sn'}.2";
+	$self->getSearchAndSubs($myURI, $filename, $subfolder, "$doc{'sn'}.2");
 	
 	sleep 30;
     }
 
     print "done! Ta Da \n";
 
+}
+
+sub getSearchAndSubs {
+    my $self = shift;
+    my $url = shift;
+    my $outfile = shift;
+    my $subfolder = shift;
+    my $subprefix = shift;
+    my $mech = new WWW::Mechanize;
+    $mech->get($url);
+		
+    $mech->save_content($outfile);
+		
+    print "Wrote $url to $outfile\n";
+
+    mkdir $subfolder unless -d $subfolder;
+
+    $self->getSubLinks($outfile, $subfolder, $subprefix);
 }
 
 sub outputPaths {

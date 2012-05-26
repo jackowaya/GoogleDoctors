@@ -1,8 +1,8 @@
 package HealthGradesParser;
-use ParsingFramework::FileParser;
-@ISA = ("FileParser");
+use Parsers::DoctorFileParser;
+@ISA = ("DoctorFileParser");
 
-# Parser class for healthgrades.com. Gets: doctorID, Review-Lastname, Review-Firstname, rating
+# Parser class for healthgrades.com. Gets: doctorID, Review-Lastname, Review-Firstname, rating, Number-of-ratings
 # To use this, you must call init and teardown yourself
 
 use strict;
@@ -12,71 +12,60 @@ use Parsers::ParserCommon;
 
 sub new {
     my $class = shift;
-    my $self = $class->SUPER::new();
-    $self->{RESULTDIR} = shift;
-    $self->{INITED} = 0;
+    my $self = $class->SUPER::new(shift);
     bless($self, $class);
     return $self;
 }
 
-sub init() {
-    # Initializes this parser and sub-parsers
+sub canParseUrl {
     my $self = shift;
-    open($self->{OUTHANDLE}, "> $self->{RESULTDIR}/healthGradesResults.txt") or die "Could not open health grades results $!";
-    my $handle = $self->{OUTHANDLE};
-    print $handle "ID\tReview-LastName\tReview-Firstname\tRating\n";
-    $self->{INITED} = 1;
+    my $url = shift;
+   
+    return $url =~ m/healthgrades\.com/i;
 }
 
-sub teardown() {
-    my $self = shift;
-    close($self->{OUTHANDLE});
-    $self->{INITED} = 0;
+sub outputFilename {
+    return "healthGradesResults.txt";
 }
 
-sub parse {
-    my $self = shift;
-    die "Cannot parse before init is called" unless $self->{INITED};
+sub pageName {
+    return "Health Grades";
+}
 
-    my $doctorId = shift;
+sub getNameFromTree {
+    my $self = shift;
+    my $tree = shift;
     my $path = shift;
-
-    my $tree = HTML::Tree->new_from_file($path);
-
     my $nameSection = $tree->look_down('id', 'physician-name-h1');
 
     if (!$nameSection) {
-	my $handle = $self->{OUTHANDLE};
-	print $handle "$doctorId\t--\t--\t--\n";
 	print STDERR "Bad health grades page $path\n";
-	return;
+	return "--", "--";
     }
 
     my $fullName = $nameSection->as_text();
     $fullName =~ s/^\s*Dr\.\s*//;
-    my ($firstName, $lastName) = ParserCommon::parseName($fullName);
+    return ParserCommon::parseName($fullName);
 
-    my $ratingSection = $tree->look_down(sub {
-	$_[0]->tag() eq 'div' &&
-	$_[0]->attr('class') eq 'ratingSection' &&
-	$_[0]->as_text() =~ m/Overall/
-					 });
+}
+
+sub getRatingFromTree {
+    my $self = shift;
+    my $tree = shift;
+
+    my $ratingSection = $tree->look_down('id', 'overallPatientRating');
     my $rating = "--";
+    my $ratingCount = 0;
+
     if ($ratingSection) {
-	my @starElements = $ratingSection->look_down('_tag', 'li');
-	$rating = 0.0;
-	foreach my $starElem (@starElements) {
-	    if ($starElem->attr('class') eq "starSmallYellowFull") {
-		$rating++;
-	    } elsif ($starElem->attr('class') eq "starSmallYellowHalf") {
-		$rating += 0.5;
-	    } elsif ($starElem->attr('class') ne "starSmallWhite") {
-		die "Got unexpected star when parsing Health Grades for doctor $doctorId:" . $starElem->attr('class');
-	    }
-	}
+	my $ratingElem = $ratingSection->look_down('class', 'value');
+	$rating = $ratingElem->as_text();
+
+	my $countElem = $ratingSection->look_down('class', 'votes');
+	$ratingCount = $countElem->as_text();
     }
 
-    my $handle = $self->{OUTHANDLE};
-    print $handle "$doctorId\t$lastName\t$firstName\t$rating\n";
+    return $rating, $ratingCount;
 }
+
 1;

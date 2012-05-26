@@ -4,6 +4,11 @@ use ParsingFramework::FileParser;
 use Parsers::RateMdsParser;
 use Parsers::VitalsParser;
 use Parsers::HealthGradesParser;
+use Parsers::YelpParser;
+use Parsers::YahooLocalParser;
+use Parsers::InsiderPagesParser;
+use Parsers::WellnessParser;
+use Parsers::GoogleMapsParser;
 @ISA = ("FileParser");
 
 # Google parser - Wraps several different parsers - one that gets the links
@@ -22,11 +27,16 @@ sub new {
     my $resultDir = shift;
     $self->{RESULTDIR} = $resultDir;
     $self->{INITED} = 0;
-    $self->{SUBPARSERS} = {
-	'ratemds' => RateMdsParser->new($resultDir),
-	'vitals' => VitalsParser->new($resultDir),
-	'healthgrades' => HealthGradesParser->new($resultDir)
-    };
+    $self->{SUBPARSERS} = [
+	RateMdsParser->new($resultDir),
+	VitalsParser->new($resultDir),
+	HealthGradesParser->new($resultDir),
+	YelpParser->new($resultDir),
+	YahooLocalParser->new($resultDir),
+	InsiderPagesParser->new($resultDir),
+	WellnessParser->new($resultDir),
+	GoogleMapsParser->new($resultDir)
+    ];
     bless($self, $class);
     return $self;
 }
@@ -38,8 +48,8 @@ sub init() {
     open($self->{OUTHANDLE}, "> $self->{RESULTDIR}/searchResults.txt") or die "Could not open google search results $!";
     my $handle = $self->{OUTHANDLE};
     print $handle "ID\tResult Page\tResult Number\tLink\n";
-    foreach my $k (keys(%{$self->{SUBPARSERS}})) {
-	$self->{SUBPARSERS}->{$k}->init();
+    foreach my $parser (@{$self->{SUBPARSERS}}) {
+	$parser->init();
     }
     $self->{INITED} = 1;
 }
@@ -48,8 +58,8 @@ sub teardown() {
     # Tears down this parser and sub-parsers.
     my $self = shift;
     close($self->{OUTHANDLE});
-    foreach my $k (keys(%{$self->{SUBPARSERS}})) {
-	$self->{SUBPARSERS}->{$k}->teardown();
+    foreach my $parser (@{$self->{SUBPARSERS}}) {
+	$parser->teardown();
     }
     $self->{INITED} = 0;
 }
@@ -90,38 +100,29 @@ sub parse {
 	    my $handle = $self->{OUTHANDLE};
 	    print $handle "$docId\t$page\t$resultNum\t$links[$i]\t$links[$i + 1]\n";
 
-	    my $subparser = $self->getSubParser($links[$i]);
-	    if ($subparser) {
-		my $subpath = $path;
-		$subpath =~ s/\.html$//;
-		# Sponsored links were downloaded second even though they 
-		# appear first.
-		if ($links[$i] eq "Yes") {
-		    $subpath .= ".$totalCount.html";
-		} else {
-		    my $count = $totalCount - $sponsoredCounts{$docId};
-		    $subpath .= ".$count.html";
+	    foreach my $subparser (@{$self->{SUBPARSERS}}) {
+		if ($subparser->canParseUrl($links[$i])) {
+		    my $subpath = $path;
+		    $subpath =~ s/\.html$//;
+
+		    # Need to go from [something]/number.1.html to [something]/number.1/number.1.2.html
+		    # This terrifying substitution gets us to [something]/number.1/number.1
+		    $subpath =~ s/\/([^\/]+)$/\/\1\/\1/;
+		    
+		    # Sponsored links were downloaded second even though they 
+		    # appear first.
+		    if ($links[$i] eq "Yes") {
+			$subpath .= ".$totalCount.html";
+		    } else {
+			my $count = $totalCount - $sponsoredCounts{$docId};
+			$subpath .= ".$count.html";
+		    }
+		    $subparser->parse($docId, $subpath);
 		}
-		$subparser->parse($docId, $subpath);
 	    }
 	}
     }
 
-}
-
-sub getSubParser {
-    my $self = shift;
-    my $url = shift;
-
-    if ($url =~ m/ratemds\.com/i) {
-	return $self->{SUBPARSERS}->{'ratemds'};
-    } elsif ($url =~ m/vitals\.com/i) {
-	return $self->{SUBPARSERS}->{'vitals'};
-    } elsif ($url =~ m/healthgrades\.com/i) {
-	return $self->{SUBPARSERS}->{'healthgrades'};
-    }
-
-    return 0;
 }
 
 sub getSearchLinks {

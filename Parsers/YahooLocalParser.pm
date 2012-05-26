@@ -1,4 +1,4 @@
-package RateMdsParser;
+package YahooLocalParser;
 use Parsers::DoctorFileParser;
 @ISA = ("DoctorFileParser");
 
@@ -22,29 +22,39 @@ sub canParseUrl {
     my $self = shift;
     my $url = shift;
    
-    return $url =~ m/ratemds\.com/i;
+    return $url =~ m/local\.yahoo\.com/i;
 }
 
 sub outputFilename {
-    return "rateMdsResults.txt";
+    return "yahooLocalResults.txt";
 }
 
 sub pageName {
-    return "RateMds";
+    return "Yahoo Local";
 }
 
 sub getNameFromTree {
     my $self = shift;
     my $tree = shift;
     my $path = shift;
-    my $nameElem = $tree->look_down('class', 'fn');
+    my $nameElem = $tree->look_down('id', 'HDN_title', );
 
     if (!$nameElem) {
-	print STDERR "Bad RateMds page $path\n";
 	return "--", "--";
     }
 
+    # These titles are of the form last, first MD - something
+    # but parser common expects first last.
     my $fullName = $nameElem->as_text();
+
+    $fullName =~ s/(?:MD)?\s*-.*$//;
+    my @parts = split(/,/, $fullName);
+    if (scalar(@parts) == 2) {
+	$fullName = "$parts[1] $parts[0]";
+    } else {
+	print STDERR "Error in Yahoo parsing path $path with name $fullName\n";
+    }
+
     return ParserCommon::parseName($fullName);
 }
 
@@ -53,31 +63,17 @@ sub getRatingFromTree {
     my $tree = shift;
 
     # The last one that matches is the one we want.
-    my @ratingRows = $tree->look_down(sub {
-         $_[0]->tag() eq 'tr' &&
-         $_[0]->as_text() =~ m/Overall\s+Quality\*/
-    });
-    my $ratingRow = pop(@ratingRows);
-
     my $rating = "--";
     my $ratingCount = 0;
-    if ($ratingRow) {
-	# May not have ratings yet.
-	my @ratingRowCells = $ratingRow->look_down('_tag', 'td');
-	$rating = $ratingRowCells[2]->as_text();
+
+    my $ratingElem = $tree->look_down('id', 'HDN_reviewavg');
+    if ($ratingElem) {
+	$rating = $ratingElem->as_text();
     }
 
-    # The last one that matches is the one we want.
-    my @countRows = $tree->look_down(sub {
-         $_[0]->tag() eq 'tr' &&
-         $_[0]->as_text() =~ m/#\s+Ratings/
-    });
-    my $countRow = pop(@countRows);
-
-    if ($countRow) {
-	# May not have ratings yet.
-	my @countRowCells = $countRow->look_down('_tag', 'td');
-	$ratingCount = $countRowCells[2]->as_text();
+    my $countElem = $tree->look_down('id', 'HDN_reviewcnt');
+    if ($countElem) {
+	$ratingCount = $countElem->as_text();
     }
     
     return $rating, $ratingCount;
