@@ -45,9 +45,14 @@ sub getNameFromTree {
     }
 
     my $nameElem = $vcardElem->look_down('class', 'fn');
-    my $fullName = $nameElem->as_text();
-
-    return ParserCommon::parseName($fullName);
+    if ($nameElem) {
+	my $fullName = $nameElem->as_text();
+	
+	return ParserCommon::parseName($fullName);
+    } else {
+	print STDERR "Differently bad Wellness page $path\n";
+	return "--", "--";
+    }
 }
 
 sub getRatingFromTree {

@@ -80,7 +80,12 @@ sub getRatingFromTree {
 
 	$overallRatingImg->attr('src') =~ m/r_stars(\d\.\d)\.gif/i;
 	$rating = $1;
-	die "Forgot how to handle path $path";
+
+	my $summaryDiv = $tree->look_down('id', 'summary_container');
+	if ($summaryDiv) {
+	    my $numRatingsSpan = $summaryDiv->look_down('class', 'count');
+	    $ratingCount = $numRatingsSpan->as_text() if $numRatingsSpan;
+	}
     } else {
 	
 	my $ratingSection = $reviewSection->look_down('class', 'value');

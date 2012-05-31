@@ -63,10 +63,12 @@ sub getRatingFromTree {
 	}	
 
 	my $outerCountElem = $ratingBlock->look_down('class', 'rsw-pp rsw-pp-link');
-	my @spans = $outerCountElem->look_down('_tag', 'span');
-	# want first span
-	$ratingCount = $spans[0]->as_text();
-	$ratingCount =~ s/\s*reviews\s*//;
+	if ($outerCountElem) {
+	    my @spans = $outerCountElem->look_down('_tag', 'span');
+	    # want first span
+	    $ratingCount = $spans[0]->as_text();
+	    $ratingCount =~ s/\s*reviews\s*//;
+	}
     }
 
     return $rating, $ratingCount;
