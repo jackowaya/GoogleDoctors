@@ -1,18 +1,10 @@
 package GoogleParser;
 
 use ParsingFramework::FileParser;
-use Parsers::RateMdsParser;
-use Parsers::VitalsParser;
-use Parsers::HealthGradesParser;
-use Parsers::YelpParser;
-use Parsers::YahooLocalParser;
-use Parsers::InsiderPagesParser;
-use Parsers::WellnessParser;
-use Parsers::GoogleMapsParser;
 @ISA = ("FileParser");
 
 # Google parser - Wraps several different parsers - one that gets the links
-# from google search results and several others for specific pages.
+# from google search results and any other DoctorFileParsers passed in.
 # This parser actually ignores many of the paths sent to it by parse, preferring to
 # Determine which files are interesting based on the search results pages.
 # Results are written to a folder specified at create time.
@@ -27,16 +19,8 @@ sub new {
     my $resultDir = shift;
     $self->{RESULTDIR} = $resultDir;
     $self->{INITED} = 0;
-    $self->{SUBPARSERS} = [
-	RateMdsParser->new($resultDir),
-	VitalsParser->new($resultDir),
-	HealthGradesParser->new($resultDir),
-	YelpParser->new($resultDir),
-	YahooLocalParser->new($resultDir),
-	InsiderPagesParser->new($resultDir),
-	WellnessParser->new($resultDir),
-	GoogleMapsParser->new($resultDir)
-    ];
+    my $subParserReference = shift;
+    $self->{SUBPARSERS} = $subParserReference;
     bless($self, $class);
     return $self;
 }
