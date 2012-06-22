@@ -17,4 +17,24 @@ sub parseName {
     return join(' ', @nameParts), $lastName;
 }
 
+sub tabSeparate {
+    # Takes an array ref. Returns tab separated values followed by a newline.
+    my $output = "";
+    my $tmp;
+    my @vals = @{$_[0]};
+    for (my $i = 0; $i < scalar(@vals) - 1; $i++) {
+	$tmp = $vals[$i];
+	if (!defined($tmp)) { 
+	    print STDERR "Got undefined value $output";
+	}
+	$tmp =~ s/\s+/ /g;
+	$output .= $tmp . "\t";
+    }
+    $tmp = $vals[scalar(@vals) - 1];
+    $tmp =~ s/\s+/ /g;
+    $output .= $tmp . "\n";
+
+    return $output;
+}
+
 1;

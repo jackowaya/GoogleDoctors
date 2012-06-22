@@ -10,31 +10,11 @@ use ParsingFramework::ParsingRunner;
 
 use GoogleDownloader;
 use GoogleParser;
-use Parsers::RateMdsParser;
-use Parsers::VitalsParser;
-use Parsers::HealthGradesParser;
-use Parsers::YelpParser;
-use Parsers::YahooLocalParser;
-use Parsers::InsiderPagesParser;
-use Parsers::WellnessParser;
-use Parsers::GoogleMapsParser;
+use SubparserManager;
 
 my $usage = "Usage runner.pl [-s|--skip-download] parser input-path download-path results-path\nrunner.pl list will list available parsers\n";
 
-sub buildSubparsers {
-    my $resultDir = shift;
-    my %subparsers = (
-	"ratemds", RateMdsParser->new($resultDir),
-	"vitals", VitalsParser->new($resultDir),
-	"healthgrades", HealthGradesParser->new($resultDir),
-	"yelp", YelpParser->new($resultDir),
-	"yahoo", YahooLocalParser->new($resultDir),
-	"insiderpages", InsiderPagesParser->new($resultDir),
-	"wellness", WellnessParser->new($resultDir),
-	"googlemaps", GoogleMapsParser->new($resultDir)
-    );
-    return %subparsers;
-}
+my $subparserManager = SubparserManager->new();
 
 if (scalar(@ARGV) == 0) {
     print $usage;
@@ -52,7 +32,7 @@ if (scalar(@ARGV) != 4) {
     if (scalar(@ARGV) > 0 && lc($ARGV[0]) eq "list") {
 	print "all - All parsers in below list will be run\n";
 	print "none - Only google links parser will be run\n";
-	my %subparsers = buildSubparsers('');
+	my %subparsers = $subparserManager->getSubparsers('');
 	foreach my $key (keys(%subparsers)) {
 	    print "$key\n";
 	}
@@ -65,7 +45,7 @@ my $inputFile = shift @ARGV;
 my $downloadDir = shift @ARGV;
 my $resultDir = shift @ARGV;
 
-my %subparsers = buildSubparsers($resultDir);
+my %subparsers = $subparserManager->getSubparsers($resultDir);
 my @subparserList = values(%subparsers);
 
 my $downloader = GoogleDownloader->new($skipDownload, $downloadDir);
