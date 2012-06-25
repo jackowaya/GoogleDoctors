@@ -61,9 +61,11 @@ my @files = readdir(DIR);
 closedir(DIR);
 my $id = 1;
 foreach my $file (@files) {
-    foreach my $parserObj (@parsers) {
-	$parserObj->parse($id, $file);
-	$id++;
+    if ($file !~ m/^\./) {
+	foreach my $parserObj (@parsers) {
+	    $parserObj->parse($id, "$downloadDir/$file");
+	    $id++;
+	}
     }
 }
 

@@ -10,6 +10,7 @@ use Parsers::YahooLocalParser;
 use Parsers::InsiderPagesParser;
 use Parsers::WellnessParser;
 use Parsers::GoogleMapsParser;
+use Parsers::CitySearchParser;
 
 sub new {
     my $class = shift;
@@ -30,7 +31,8 @@ sub getSubparsers {
 	"yahoo", YahooLocalParser->new($resultDir),
 	"insiderpages", InsiderPagesParser->new($resultDir),
 	"wellness", WellnessParser->new($resultDir),
-	"googlemaps", GoogleMapsParser->new($resultDir)
+	"googlemaps", GoogleMapsParser->new($resultDir),
+	"citysearch", CitySearchParser->new($resultDir)
     );
     return %subparsers;
 }

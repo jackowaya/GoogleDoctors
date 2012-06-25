@@ -22,7 +22,7 @@ sub new {
     if ($fieldListRef) {
 	@fieldList = @$fieldListRef;
     } else {
-	@fieldList = ["ID", "Review-LastName", "Review-FirstName", "Rating", "Number-of-Ratings"];
+	@fieldList = ("ID", "Review-LastName", "Review-FirstName", "Rating", "Number-of-Ratings");
     }
     $self->{FIELDS} = \@fieldList;
 
@@ -36,7 +36,7 @@ sub init() {
     my $resultFile = "$self->{RESULTDIR}/" . $self->outputFilename();
     open($self->{OUTHANDLE}, "> $resultFile") or die "Could not open results file $resultFile $!";
     my $handle = $self->{OUTHANDLE};
-    print $handle ParserCommon::tabSeparate(@{$self->{FIELDS}});
+    print $handle ParserCommon::tabSeparate($self->{FIELDS});
     $self->{INITED} = 1;
 }
 
@@ -99,7 +99,7 @@ sub parse {
     my %fieldValues = $self->getDataFields($doctorId, $path);
  
     my @outputValues;
-    foreach my $field (@{@{$self->{FIELDS}}[0]}) {
+    foreach my $field (@{$self->{FIELDS}}) {
 	push(@outputValues, $fieldValues{$field});
     }
 
