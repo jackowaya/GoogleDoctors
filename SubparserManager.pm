@@ -11,6 +11,7 @@ use Parsers::InsiderPagesParser;
 use Parsers::WellnessParser;
 use Parsers::GoogleMapsParser;
 use Parsers::CitySearchParser;
+use Parsers::LifescriptParser;
 
 sub new {
     my $class = shift;
@@ -32,7 +33,8 @@ sub getSubparsers {
 	"insiderpages", InsiderPagesParser->new($resultDir),
 	"wellness", WellnessParser->new($resultDir),
 	"googlemaps", GoogleMapsParser->new($resultDir),
-	"citysearch", CitySearchParser->new($resultDir)
+	"citysearch", CitySearchParser->new($resultDir),
+	"lifescript", LifescriptParser->new($resultDir)
     );
     return %subparsers;
 }
