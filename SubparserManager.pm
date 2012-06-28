@@ -13,6 +13,7 @@ use Parsers::GoogleMapsParser;
 use Parsers::CitySearchParser;
 use Parsers::LifescriptParser;
 use Parsers::AvvoParser;
+use Parsers::VimoParser;
 
 sub new {
     my $class = shift;
@@ -36,7 +37,8 @@ sub getSubparsers {
 	"googlemaps", GoogleMapsParser->new($resultDir),
 	"citysearch", CitySearchParser->new($resultDir),
 	"lifescript", LifescriptParser->new($resultDir),
-	"avvo", AvvoParser->new($resultDir)
+	"avvo", AvvoParser->new($resultDir),
+	"vimo", VimoParser->new($resultDir)
     );
     return %subparsers;
 }
