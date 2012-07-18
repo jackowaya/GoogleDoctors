@@ -40,8 +40,21 @@ sub getNameFromTree {
     my $reviewElem = $tree->look_down('class', 'hReview-aggregate');
 
     if (!$reviewElem) {
-	print STDERR "Bad Yelp page $path\n";
-	return "--", "--";
+	# Try another type of yelp page.
+	$reviewElem = $tree->look_down('id', 'bizInfoHeader');
+	if (!$reviewElem) {
+	    print STDERR "Bad Yelp page $path\n";
+	    return "--", "--";
+	}
+	my $nameElem = $reviewElem->look_down(sub {
+	    $_[0]->tag() eq 'h1' && $_[0]->attr('itemprop') eq 'name'});
+	if (!$nameElem) {
+	    print STDERR "Bad Yelp page $path (No name)\n";
+	    return "--", "--";
+	}
+	my $fullName = $nameElem->as_text();
+	$fullName =~ s/\s*MD$//i;
+	return ParserCommon::parseName($nameElem->as_text());
     }
 
     my $nameElem = $reviewElem->look_down('class', 'fn org');
@@ -67,8 +80,21 @@ sub getRatingFromTree {
 	    my $outerCountElem = $ratingBlock->look_down('class', 'review-count');
 	    my $countElem = $outerCountElem->look_down('class', 'count');
 	    $ratingCount = $countElem->as_text();
+	} else {
+	    # Another type of yelp page.
+	    my $ratingElem = $ratingBlock->look_down(sub {
+		$_[0]->tag() eq 'img' && $_[0]->attr('title') =~ m/star rating/});
+	    if ($ratingElem) {
+		$rating = $ratingElem->attr('title');
+		$rating =~ s/\s*star rating\s*//i;
+	    }
+	    my $countElem = $tree->look_down(sub {
+		$_[0]->tag() eq 'span' && $_[0]->attr('itemprop') eq 'reviewCount'});
+	    if ($countElem) {
+		$ratingCount = $countElem->as_text();
+	    }
 	}
-    }
+    } 
 
     return $rating, $ratingCount;
 }
