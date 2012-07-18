@@ -66,7 +66,7 @@ sub getDataFields {
 
     my $gender = "";
     my $genderElem = $tree->look_down('id', 'gender_detail');
-    $gender = $genderElem->as_text();
+    $gender = $genderElem->as_text() if $genderElem;
 
     my $city = "";
     my $state = "";
@@ -78,6 +78,9 @@ sub getDataFields {
 	    $city = $1;
 	    $state = $2;
 	    $zip = $3;
+	} elsif ($cityStateElem->as_text() =~ m/(.*),\s+([A-Z]+)/i) {
+	    $city = $1;
+	    $state = $2;
 	} else {
 	    print STDERR "Avvo parser couldn't parse city state " . $cityStateElem->as_text() . " in path $path\n";
 	}
@@ -94,7 +97,8 @@ sub getDataFields {
 	my $ratingOuterElem = $ratingsElem->look_down('id', 'avvo_rating');
 	if ($ratingOuterElem) {
 	    my $ratingElem = $ratingOuterElem->look_down('class', 'value');
-	    $avvoRating = $ratingElem->as_text();
+	    $avvoRating = $ratingElem->as_text() if $ratingElem;
+	    print STDERR "Bad Avvo path $path\n" unless $ratingElem;
 	}
 
 	my $subRatingsElem = $tree->look_down('id', 'sub_rating');

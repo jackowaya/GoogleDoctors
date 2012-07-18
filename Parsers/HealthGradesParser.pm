@@ -39,6 +39,12 @@ sub getNameFromTree {
     my $nameSection = $tree->look_down('id', 'physician-name-h1');
 
     if (!$nameSection) {
+	# Try another type of page
+	my $lastName = $tree->look_down('class', 'family-name');
+	my $firstName = $tree->look_down('class', 'given-name');
+	if ($firstName && $lastName) {
+	    return $firstName->as_text(), $lastName->as_text();
+	}
 	print STDERR "Bad health grades page $path\n";
 	return "--", "--";
     }
@@ -63,6 +69,21 @@ sub getRatingFromTree {
 
 	my $countElem = $ratingSection->look_down('class', 'votes');
 	$ratingCount = $countElem->as_text();
+    } else {
+	# Another type of page.
+	$ratingSection = $tree->look_down('class', 'qualityBarTipsLeftColumn');
+	if ($ratingSection) {
+	    my $ratingElem = $ratingSection->look_down('_tag', 'strong');
+	    $rating = $ratingElem->as_text() if $ratingElem;
+
+	    my $countElem = $ratingSection->look_down('style', 'font-size:11px;');
+	    if ($countElem) {
+		my $count = $countElem->as_text();
+		if ($count =~ m/Based on (\d+) HealthGrades/i) {
+		    $ratingCount = $1;
+		}
+	    }
+	}
     }
 
     return $rating, $ratingCount;
