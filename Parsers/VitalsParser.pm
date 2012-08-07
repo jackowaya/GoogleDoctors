@@ -91,7 +91,12 @@ sub getRatingFromTree {
 	if (!$overallRatingImg) {
 	    # There is another type of vitals page that doesn't have this image either.
 	    my $ratingSection = $tree->look_down('class', 'hreview-aggregate');
-	    if ($ratingSection && $ratingSection->as_text() =~ m/has been reviewed by (\d+) patients. The rating is (\d+\.?\d*)/i) {
+	    # There is another another type of vitals page that has the same text as this but
+	    # in a different div.
+	    if (!$ratingSection) {
+		print STDERR "Bad Vitals page $path\n";
+	    }
+	    if ($ratingSection && $ratingSection->as_text() =~ m/has been reviewed by (\d+) patients?. The rating is (\d+\.?\d*)/i) {
 		$rating = $2;
 		$ratingCount = $1;
 	    }
