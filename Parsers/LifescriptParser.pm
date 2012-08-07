@@ -13,7 +13,7 @@ use Parsers::ParserCommon;
 
 sub new {
     my $class = shift;
-    my $fieldsRef = ["ID", "First Name", "Last Name", "Gender", "City", "State", "Review Score", "Number of reviews"];
+    my $fieldsRef = ["ID", "Google-Page", "Google-Result", "First Name", "Last Name", "Gender", "City", "State", "Review Score", "Number of reviews"];
     my $self = $class->SUPER::new(shift, $fieldsRef);
     bless($self, $class);
     return $self;
@@ -85,6 +85,8 @@ sub getDataFields {
 
     my ($rating, $ratingCount) = $self->getRatingFromTree($tree, $path);
 
+    my ($googlePage, $googleResult) = $self->getGooglePage($path);
+
     my $gender = "";
     my $city = "";
     my $state = "";
@@ -105,6 +107,8 @@ sub getDataFields {
 
     my %output;
     $output{"ID"} = $doctorId;
+    $output{"Google-Page"} = $googlePage;
+    $output{"Google-Result"} = $googleResult;
     $output{"Last Name"} = $lastName;
     $output{"First Name"} = $firstName;
     $output{"Review Score"} = $rating;

@@ -14,7 +14,7 @@ use LWP::Simple;
 
 sub new {
     my $class = shift;
-    my $fieldsRef = ["ID", "First Name", "Last Name", "Gender", "City", "State", "Zip code", "Overall rating", "Knowledge and Skill", "Availability", "Punctuality", "Personal skills", "Office staff"];
+    my $fieldsRef = ["ID", "Google-Page", "Google-Result", "First Name", "Last Name", "Gender", "City", "State", "Zip code", "Overall rating", "Knowledge and Skill", "Availability", "Punctuality", "Personal skills", "Office staff"];
     my $self = $class->SUPER::new(shift, $fieldsRef);
     bless($self, $class);
     return $self;
@@ -65,6 +65,8 @@ sub getDataFields {
     my $tree = HTML::Tree->new_from_file($path);
  
     my ($firstName, $lastName) = $self->getNameFromTree($tree, $path);
+
+    my ($googlePage, $googleResult) = $self->getGooglePage($path);
 
     my $personalDetailsElem = $tree->look_down('_tag', 'dl', 'style', 'margin-top: 0;');
     my $gender = "";
@@ -152,6 +154,8 @@ sub getDataFields {
 
     my %output;
     $output{"ID"} = $doctorId;
+    $output{"Google-Page"} = $googlePage;
+    $output{"Google-Result"} = $googleResult;
     $output{"Last Name"} = $lastName;
     $output{"First Name"} = $firstName;
     $output{"City"} = $city;

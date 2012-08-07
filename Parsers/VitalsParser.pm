@@ -113,7 +113,6 @@ sub getRatingFromTree {
 	    $ratingCount = $numRatingsSpan->as_text() if $numRatingsSpan;
 	}
     } else {
-	
 	my $ratingSection = $reviewSection->look_down('class', 'value');
 	$rating = $ratingSection->as_text();
 

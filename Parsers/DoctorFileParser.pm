@@ -22,7 +22,7 @@ sub new {
     if ($fieldListRef) {
 	@fieldList = @$fieldListRef;
     } else {
-	@fieldList = ("ID", "Review-LastName", "Review-FirstName", "Rating", "Number-of-Ratings");
+	@fieldList = ("ID", "Google-Page", "Google-Result", "Review-LastName", "Review-FirstName", "Rating", "Number-of-Ratings");
     }
     $self->{FIELDS} = \@fieldList;
 
@@ -67,6 +67,19 @@ sub getRatingFromTree {
     die "Subclasses must implement this";
 }
 
+sub getGooglePage {
+    my $self = shift;
+    my $path = shift;
+
+    print "parsing $path\n";
+
+    if ($path =~ m/(\d+)\.(\d+)\.htm/i) {
+	return ($1, $2);
+    } else {
+	die "Could not get google page from path $path";
+    }
+}
+
 sub getDataFields {
     # returns dictionary of field name (from $self->{FIELDS}) -> field value.
     # many subparsers will override this.
@@ -81,8 +94,12 @@ sub getDataFields {
 
     my ($rating, $ratingCount) = $self->getRatingFromTree($tree, $path);
 
+    my ($googlePage, $googleResult) = $self->getGooglePage($path);
+
     my %output;
     $output{"ID"} = $doctorId;
+    $output{"Google-Page"} = $googlePage;
+    $output{"Google-Result"} = $googleResult;
     $output{"Review-LastName"} = $lastName;
     $output{"Review-FirstName"} = $firstName;
     $output{"Rating"} = $rating;
