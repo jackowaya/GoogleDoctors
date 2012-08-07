@@ -50,7 +50,18 @@ sub getNameFromTree {
     # Full name like last, first, Md - place. Take off , MD - place
     $fullName =~ s/(?:, Md)?\s+-\s+.*?$//i;
 
+    # Some full names don't have the commas or have the Md at the end
+    $fullName =~ s/\s+Md\s*$//i;
+    
     my @parts = split(/,/, $fullName);
+    if (scalar(@parts) <= 1) {
+	@parts = split(/\s+/, $fullName);
+    }
+    if (scalar(@parts) <= 1) {
+	print STDERR "Could not process citysearch name " . $nameElem->as_text() . "\n";
+	push(@parts, "");
+	push(@parts, "");
+    }
     my $lastName = $parts[0];
     $lastName =~ s/\s+$//;
     my $firstName = $parts[1];

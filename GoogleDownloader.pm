@@ -24,6 +24,7 @@ sub new {
     
     $self->{SKIPDOWNLOAD} = shift;
     $self->{OUTPUTDIR} = shift;
+    $self->{PAGES} = shift;
 
     bless($self, $class);
     return $self;
@@ -45,26 +46,19 @@ sub download {
     my @doctorInfo = @{$self->readCSV($infile)};
 
     foreach my $docRef (@doctorInfo) {
-	my $cnt = 0;
-
-	my $done = 0;
-	$myURI = $self->generateSearchUri($docRef, 1);
-	my %doc = %$docRef;
+	for ($i = 1; $i <= $self->{PAGES}; ++$i) {
+	    my $done = 0;
+	    $myURI = $self->generateSearchUri($docRef, $i);
+	    my %doc = %$docRef;
 	
-	$filename = "$outfolder/$doc{'sn'}.1.html";
-	my $subfolder = "$outfolder/$doc{'sn'}.1";
+	    $filename = "$outfolder/$doc{'sn'}.$i.html";
+	    my $subfolder = "$outfolder/$doc{'sn'}.$i";
 
-	# Get the first page and its links, then the next page, then pause.
-	$self->getSearchAndSubs($myURI, $filename, $subfolder, "$doc{'sn'}.1");
+	    # Get the first page and its links, then the next page, then pause.
+	    $self->getSearchAndSubs($myURI, $filename, $subfolder, "$doc{'sn'}.$i");
+	    sleep 15;
+	}
 	sleep 15;
-	
-	# second page!
-	$myURI = $self->generateSearchUri($docRef, 2);
-	$filename = "$outfolder/$doc{'sn'}.2.html";
-	$subfolder = "$outfolder/$doc{'sn'}.2";
-	$self->getSearchAndSubs($myURI, $filename, $subfolder, "$doc{'sn'}.2");
-	
-	sleep 30;
     }
 
     print "done! Ta Da \n";
@@ -110,8 +104,9 @@ sub generateSearchUri {
 	my $page = shift;
 	
 	my $uri = URI->new("http://www.google.com/search");
-	if ($page == 2) {
-		$uri-> query_form(ie => "UTF-8", q => "$doc{'lastname'} $doc{'firstname'} $doc{'specialty'} $doc{'city'} $doc{'state'}", start => "10");
+	if ($page > 1) {
+	    my $start = ($page - 1) * 10;
+		$uri-> query_form(ie => "UTF-8", q => "$doc{'lastname'} $doc{'firstname'} $doc{'specialty'} $doc{'city'} $doc{'state'}", start => "$start");
 	} else {
 		$uri-> query_form(ie => "UTF-8", q => "$doc{'lastname'} $doc{'firstname'} $doc{'specialty'} $doc{'city'} $doc{'state'}");
 	}

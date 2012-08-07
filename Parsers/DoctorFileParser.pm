@@ -71,12 +71,11 @@ sub getGooglePage {
     my $self = shift;
     my $path = shift;
 
-    print "parsing $path\n";
-
     if ($path =~ m/(\d+)\.(\d+)\.htm/i) {
 	return ($1, $2);
     } else {
-	die "Could not get google page from path $path";
+	print STDERR "Could not get google page from path $path\n";
+	return (-1, -1);
     }
 }
 

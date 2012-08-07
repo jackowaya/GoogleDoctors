@@ -12,7 +12,7 @@ use GoogleDownloader;
 use GoogleParser;
 use SubparserManager;
 
-my $usage = "Usage runner.pl [-s|--skip-download] parser input-path download-path results-path\nrunner.pl list will list available parsers\n";
+my $usage = "Usage runner.pl [-s|--skip-download] [-p|--pages number-of-google-pages] parser input-path download-path results-path\nrunner.pl list will list available parsers\n";
 
 my $subparserManager = SubparserManager->new();
 
@@ -25,6 +25,14 @@ my $skipDownload = 0;
 if ($ARGV[0] eq "-s" || $ARGV[0] eq "--skip-download") {
     $skipDownload = 1;
     shift @ARGV;
+}
+
+my $numPages;
+if ($ARGV[0] eq "-p" || $ARGV[0] eq "--pages") {
+    shift @ARGV;
+    $numPages = shift(@ARGV) + 0;
+} else {
+    $numPages = 2;
 }
 
 if (scalar(@ARGV) != 4) {
@@ -48,7 +56,7 @@ my $resultDir = shift @ARGV;
 my %subparsers = $subparserManager->getSubparsers($resultDir);
 my @subparserList = values(%subparsers);
 
-my $downloader = GoogleDownloader->new($skipDownload, $downloadDir);
+my $downloader = GoogleDownloader->new($skipDownload, $downloadDir, $numPages);
 
 my $googleParser;
 if ($parser eq "all") {
