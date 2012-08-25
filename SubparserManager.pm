@@ -14,6 +14,8 @@ use Parsers::CitySearchParser;
 use Parsers::LifescriptParser;
 use Parsers::AvvoParser;
 use Parsers::VimoParser;
+use Parsers::EverydayHealthParser;
+use Parsers::ThirdAgeParser;
 
 sub new {
     my $class = shift;
@@ -38,7 +40,9 @@ sub getSubparsers {
 	"citysearch", CitySearchParser->new($resultDir),
 	"lifescript", LifescriptParser->new($resultDir),
 	"avvo", AvvoParser->new($resultDir),
-	"vimo", VimoParser->new($resultDir)
+	"vimo", VimoParser->new($resultDir),
+	"everydayhealth", EverydayHealthParser->new($resultDir),
+	"thirdage", ThirdAgeParser->new($resultDir)
     );
     return %subparsers;
 }

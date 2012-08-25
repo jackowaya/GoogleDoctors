@@ -17,6 +17,16 @@ sub parseName {
     return join(' ', @nameParts), $lastName;
 }
 
+sub parseCityStateZip {
+    # Parses city, state zip line into city, state, and zip
+    my $addr = shift;
+    if ($addr =~ m/([^,]+),\s+(\w+)\s+(\d+)/) {
+	return $1, $2, $3;
+    }
+    print STDERR "Couldn't parse city state and zip from $addr\n";
+    return ("", "", "");
+}
+
 sub tabSeparate {
     # Takes an array ref. Returns tab separated values followed by a newline.
     my $output = "";
@@ -25,7 +35,7 @@ sub tabSeparate {
     for (my $i = 0; $i < scalar(@vals) - 1; $i++) {
 	$tmp = $vals[$i];
 	if (!defined($tmp)) { 
-	    print STDERR "Got undefined value $output";
+	    print STDERR "Got undefined value $output\n";
 	}
 	$tmp =~ s/\s+/ /g;
 	$output .= $tmp . "\t";
