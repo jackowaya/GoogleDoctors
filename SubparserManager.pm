@@ -17,6 +17,7 @@ use Parsers::VimoParser;
 use Parsers::EverydayHealthParser;
 use Parsers::ThirdAgeParser;
 use Parsers::UCompareParser;
+use Parsers::BookHealthcareParser;
 
 sub new {
     my $class = shift;
@@ -44,7 +45,8 @@ sub getSubparsers {
 	"vimo", VimoParser->new($resultDir),
 	"everydayhealth", EverydayHealthParser->new($resultDir),
 	"thirdage", ThirdAgeParser->new($resultDir),
-	"ucompare", UCompareParser->new($resultDir)
+	"ucompare", UCompareParser->new($resultDir),
+	"bookhealthcare", BookHealthcareParser->new($resultDir)
     );
     return %subparsers;
 }
