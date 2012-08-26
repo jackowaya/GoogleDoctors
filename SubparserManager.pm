@@ -18,6 +18,7 @@ use Parsers::EverydayHealthParser;
 use Parsers::ThirdAgeParser;
 use Parsers::UCompareParser;
 use Parsers::BookHealthcareParser;
+use Parsers::ZocDocParser;
 
 sub new {
     my $class = shift;
@@ -46,7 +47,8 @@ sub getSubparsers {
 	"everydayhealth", EverydayHealthParser->new($resultDir),
 	"thirdage", ThirdAgeParser->new($resultDir),
 	"ucompare", UCompareParser->new($resultDir),
-	"bookhealthcare", BookHealthcareParser->new($resultDir)
+	"bookhealthcare", BookHealthcareParser->new($resultDir),
+	"zocdoc", ZocDocParser->new($resultDir)
     );
     return %subparsers;
 }
