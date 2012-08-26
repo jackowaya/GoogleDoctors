@@ -40,13 +40,25 @@ sub getNameFromTree {
     my $path = shift;
 
     my $nameSection = $tree->look_down('class', 'item vcard');
+    my $name = "";
     if ($nameSection) {
 	my $nameElem = $nameSection->look_down('class', 'fn');
-	return ParserCommon::parseName($nameElem->as_text());
+	$name = $nameElem->as_text();
+    } else {
+	$nameSection = $tree->look_down('class', 'vcard');
+	if ($nameSection) {
+	    my $nameElem = $nameSection->look_down('_tag', 'h1');
+	    $name = $nameElem->as_text();
+	}
     }
 
-    print STDERR "Bad UCompare path $path\n";
-    return "--", "--"
+    $name =~ s/^\s*Dr\.\s*//i;
+
+    if ($name eq "") {
+	print STDERR "Bad UCompare path $path\n";
+	return "--", "--";
+    }
+    return ParserCommon::parseName($name);
 }
 
 sub getRatingFromTree {
@@ -65,7 +77,18 @@ sub getRatingFromTree {
 	    print STDERR "UCompare could not handle review section " . $reviewSection->as_text() . "\n";
 	} 
     } else {
-	print STDERR "UCompare could not get rating from path $path\n";
+	$reviewSection = $tree->look_down('class', 'clear rating-average');
+	if ($reviewSection) {
+	    my $reviewElem = $reviewSection->look_down('_tag', 'a');
+	    if ($reviewElem && $reviewElem->attr('title') =~ m/(\d+\.?\d*).*\((\d+) review/i) {
+		$rating = $1;
+		$ratingCount = $2;
+	    } else {
+		print STDERR "UCompare could not deal with review section " . $reviewSection->as_HTML() . "\n";
+	    }
+	} else {
+	    print STDERR "UCompare could not get rating from path $path\n";
+	}
     }
 
     return $rating, $ratingCount;

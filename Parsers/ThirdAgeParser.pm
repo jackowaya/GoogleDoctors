@@ -61,6 +61,7 @@ sub getRatingFromTree {
     my $path = shift;
 
     my $ratingBlock = $tree->look_down('class', 'review_rating');
+    $ratingBlock = $tree->look_down('class', 'star_rating') unless $ratingBlock;
     my $rating = "--";
     my $ratingCount = "--";
     if ($ratingBlock) {
@@ -96,7 +97,7 @@ sub getDataFields {
 			if ($titles[$i]->as_text() =~ m/Gender/i) {
 				$gender = $values[$i]->as_text();
 			} elsif ($titles[$i]->as_text() =~ m/Address/) {
-				if ($values[$i]->as_HTML() =~ m/([^>]+), (\w+) (\d+)/) {
+				if ($values[$i]->as_HTML() =~ m/([^>]+), (\w{2}) (\d+)/) {
 					$city = $1;
 					$state = $2;
 					$zip = $3;

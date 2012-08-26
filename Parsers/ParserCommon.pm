@@ -10,7 +10,7 @@ sub parseName {
     # Take off anything after a comma
     $fullName =~ s/,.*//;
     # Take off MD if necessary
-    $fullName =~ s/\s+M\.?D\.?\s+$//i;
+    $fullName =~ s/\s+M\.?D\.?\s*$//i;
     # Last name is after last space. First name is everything else
     my @nameParts = split(/\s+/, $fullName);
     my $lastName = pop(@nameParts);
