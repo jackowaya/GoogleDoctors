@@ -21,6 +21,7 @@ use Parsers::BookHealthcareParser;
 use Parsers::ZocDocParser;
 use Parsers::SuperPagesParser;
 use Parsers::YellowBotParser;
+use Parsers::YellowPagesParser;
 
 sub new {
     my $class = shift;
@@ -52,7 +53,8 @@ sub getSubparsers {
 	"bookhealthcare", BookHealthcareParser->new($resultDir),
 	"zocdoc", ZocDocParser->new($resultDir),
 	"superpages", SuperPagesParser->new($resultDir),
-	"yellowbot", YellowBotParser->new($resultDir)
+	"yellowbot", YellowBotParser->new($resultDir),
+	"yellowpages", YellowPagesParser->new($resultDir)
     );
     return %subparsers;
 }
