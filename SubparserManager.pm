@@ -19,6 +19,7 @@ use Parsers::ThirdAgeParser;
 use Parsers::UCompareParser;
 use Parsers::BookHealthcareParser;
 use Parsers::ZocDocParser;
+use Parsers::SuperPagesParser;
 
 sub new {
     my $class = shift;
@@ -48,7 +49,8 @@ sub getSubparsers {
 	"thirdage", ThirdAgeParser->new($resultDir),
 	"ucompare", UCompareParser->new($resultDir),
 	"bookhealthcare", BookHealthcareParser->new($resultDir),
-	"zocdoc", ZocDocParser->new($resultDir)
+	"zocdoc", ZocDocParser->new($resultDir),
+	"superpages", SuperPagesParser->new($resultDir)
     );
     return %subparsers;
 }
