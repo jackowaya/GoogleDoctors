@@ -2,7 +2,7 @@ package AvvoParser;
 use Parsers::DoctorFileParser;
 @ISA = ("DoctorFileParser");
 
-# Parser class for Lifescript. Gets: doctorId, First Name, Last Name, Gender, City, Zip code, State, Overall Avvo Rating (1-10), Experience (1-10), Industry recognition (1-10), Professional conduct (1-10), Average patient rating based on reviews (1-5), Number of Reviews
+# Parser class for Avvo. Gets: doctorId, First Name, Last Name, Gender, City, Zip code, State, Overall Avvo Rating (1-10), Experience (1-10), Industry recognition (1-10), Professional conduct (1-10), Average patient rating based on reviews (1-5), Number of Reviews
 # To use this, you must call init and teardown yourself
 
 use strict;

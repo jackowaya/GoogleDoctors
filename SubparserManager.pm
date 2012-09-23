@@ -22,6 +22,8 @@ use Parsers::ZocDocParser;
 use Parsers::SuperPagesParser;
 use Parsers::YellowBotParser;
 use Parsers::YellowPagesParser;
+use Parsers::KudzuParser;
+use Parsers::DoctorDotComParser;
 
 sub new {
     my $class = shift;
@@ -54,7 +56,9 @@ sub getSubparsers {
 	"zocdoc", ZocDocParser->new($resultDir),
 	"superpages", SuperPagesParser->new($resultDir),
 	"yellowbot", YellowBotParser->new($resultDir),
-	"yellowpages", YellowPagesParser->new($resultDir)
+	"yellowpages", YellowPagesParser->new($resultDir),
+	"kudzu", KudzuParser->new($resultDir),
+	"doctordotcom", DoctorDotComParser->new($resultDir)
     );
     return %subparsers;
 }
