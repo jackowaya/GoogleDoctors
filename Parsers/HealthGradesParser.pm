@@ -2,7 +2,8 @@ package HealthGradesParser;
 use Parsers::DoctorFileParser;
 @ISA = ("DoctorFileParser");
 
-# Parser class for healthgrades.com. Gets: doctorID, Review-Lastname, Review-Firstname, rating, Number-of-ratings
+# Parser class for healthgrades.com. Gets: doctorID, Review-Lastname, Review-Firstname, rating, Number-of-ratings, Gender, City, Zip-Code, State, Recommendation, Number-Patient-Surveys, Trust, Communicates, Listens, Time-Spent, Scheduling-Appts, Office-Environment, Office-Friendliness, Wait-Time
+
 # To use this, you must call init and teardown yourself
 
 use strict;
@@ -12,7 +13,8 @@ use Parsers::ParserCommon;
 
 sub new {
     my $class = shift;
-    my $self = $class->SUPER::new(shift);
+    my $fieldsRef = ["ID", "Google-Page", "Google-Result", "Review-LastName", "Review-FirstName", "Gender", "City", "State", "Zip-Code", "Recommendation", "Number-Patient-Surveys", "Trust", "Communicates", "Listens", "Time-Spent", "Scheduling-Appts", "Office-Environment", "Office-Friendliness", "Wait-Time"];
+    my $self = $class->SUPER::new(shift, $fieldsRef);
     bless($self, $class);
     return $self;
 }
@@ -88,5 +90,120 @@ sub getRatingFromTree {
 
     return $rating, $ratingCount;
 }
+sub getDataFields {
+    my $self = shift;
+    die "Cannot parse before init is called" unless $self->{INITED};
+    my $doctorId = shift;
+    my $path = shift;
+
+    my $tree = HTML::Tree->new_from_file($path);
+
+    my ($firstName, $lastName) = $self->getNameFromTree($tree, $path);
+
+    my ($rating, $ratingCount) = $self->getRatingFromTree($tree, $path);
+
+    my ($googlePage, $googleResult) = $self->getGooglePage($path);
+
+    my ($city, $state, $zip, $gender);
+    $city = $state = $zip = $gender = "--";
+
+    my $genderOuterElem = $tree->look_down('class', 'summarySpecialtyInner');
+    if ($genderOuterElem) {
+	my $genderInnerElem = $genderOuterElem->look_down('_tag', 'p');
+	if ($genderInnerElem && $genderInnerElem->as_text() =~ m/^\s*((?:Fe)male),/i) {
+	    $gender = $1;
+	}
+    }
+
+    my $addressOuterElem = $tree->look_down('class', 'summaryLocationInner');
+    if ($addressOuterElem) {
+	my $cityElem = $addressOuterElem->look_down('class', 'locality');
+	$city = $cityElem->as_text() if $cityElem;
+	$city =~ s/,$//;
+
+	my $stateElem = $addressOuterElem->look_down('class', 'region');
+	$state = $stateElem->as_text() if $stateElem;
+
+	my $zipElem = $addressOuterElem->look_down('class', 'postal-code');
+	$zip = $zipElem->as_text() if $zipElem;
+    }
+
+    my $numSurveys = "--";
+    my $surveyCountElem = $tree->look_down('class', 'qualitySurveyGenericBoxContent');
+    if ($surveyCountElem && $surveyCountElem->as_text() =~ m/Based on (\d+) Surveys/i) {
+	$numSurveys = $1;
+    }
+
+    my ($recommendation, $trust, $communicates, $listens, $timeSpent, $scheduling, $officeEnv, $officeFriendly, $waitTime);
+    $recommendation = $trust = $communicates = $listens = $timeSpent = $scheduling = $officeEnv = $officeFriendly = $waitTime = "--";
+    my $surveyOuterElem = $tree->look_down('class', 'surveyLayoutInner');
+    if ($surveyOuterElem) {
+	my @rows = $surveyOuterElem->look_down('_tag', 'tr');
+	if (@rows) {
+	    foreach my $row (@rows) {
+		my @cells = $row->look_down('_tag', 'td');
+		if (@cells && scalar(@cells) == 3) {
+
+		    my $labelElem = $cells[0]->look_down('_tag', 'strong');
+		    my $label = "";
+		    $label = $labelElem->as_text() if $labelElem;
+		    my $score = "";
+		    my $scoreElem = $cells[2]->look_down(sub {
+			$_[0]->tag() eq "span" && $_[0]->attr('class') =~ m/ratingBar/i
+							 });
+		    if ($scoreElem && $scoreElem->attr('class') =~ m/fill-to-(\d+)/i) {
+			$score = $1;
+		    }
+		    
+		    if ($label =~ m/Scheduling Appointment/i) {
+			$scheduling = $score;
+		    } elsif ($label =~ m/Office Environment/i) {
+			$officeEnv = $score;
+		    } elsif ($label =~ m/Office Friendliness/i) {
+			$officeFriendly = $score;
+		    } elsif ($label =~ m/Wait Time/i) {
+			my $waitElem = $cells[2]->look_down('_tag', 'strong');
+			$waitTime = $waitElem->as_text() if $waitElem;
+		    } elsif ($label =~ m/Level of Trust/i) {
+			$trust = $score;
+		    } elsif ($label =~ m/Helps Patients Understand/i) {
+			$communicates = $score;
+		    } elsif ($label =~ m/Listens and Answers/i) {
+			$listens = $score;
+		    } elsif ($label =~ m/Time Spent/i) {
+			$timeSpent = $score;
+		    } elsif ($label =~ m/Recommend/i) {
+			$recommendation = $score;
+		    }
+		}
+	    }
+	}
+    }
+
+    my %output;
+    $output{"ID"} = $doctorId;
+    $output{"Google-Page"} = $googlePage;
+    $output{"Google-Result"} = $googleResult;
+    $output{"Review-LastName"} = $lastName;
+    $output{"Review-FirstName"} = $firstName;
+    $output{"Review-Rating"} = $rating;
+    $output{"Number-of-Ratings"} = $ratingCount;
+    $output{"City"} = $city;
+    $output{"State"} = $state;
+    $output{"Zip-Code"} = $zip;
+    $output{"Gender"} = $gender;
+    $output{"Recommendation"} = $recommendation;
+    $output{"Number-Patient-Surveys"} = $numSurveys;
+    $output{"Trust"} = $trust;
+    $output{"Communicates"} = $communicates;
+    $output{"Listens"} = $listens;
+    $output{"Time-Spent"} = $timeSpent;
+    $output{"Scheduling-Appts"} = $scheduling;
+    $output{"Office-Environment"} = $officeEnv;
+    $output{"Office-Friendliness"} = $officeFriendly;
+    $output{"Wait-Time"} = $waitTime;
+    return %output;
+}
+
 
 1;
