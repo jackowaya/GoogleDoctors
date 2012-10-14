@@ -2,7 +2,8 @@ package VitalsParser;
 use Parsers::DoctorFileParser;
 @ISA = ("DoctorFileParser");
 
-# Parser class for vitals.com. Gets: doctorID, Review-Lastname, Review-Firstname, rating
+# Parser class for vitals.com. Gets: doctorID, Review-Lastname, Review-Firstname, rating, City, Zip-Code, State, Total-Comments-Submitted, Ease-of-Appointment, Promptness, Courteous-Staff, Accurate-Diagnosis, Bedside-Manner, Spends-Time, Follow-Up, Wait-Time
+
 # To use this, you must call init and teardown yourself
 
 use strict;
@@ -13,7 +14,8 @@ use LWP::Simple;
 
 sub new {
     my $class = shift;
-    my $self = $class->SUPER::new(shift);
+    my $fieldsRef = ["ID", "Google-Page", "Google-Result", "Review-LastName", "Review-FirstName", "City", "State", "Total-Comments-Submitted", "Ease-of-Appointment", "Promptness", "Courteous-Staff", "Accurate-Diagnosis", "Bedside-Manner", "Spends-Time", "Follow-Up", "Wait-Time"];
+    my $self = $class->SUPER::new(shift, $fieldsRef);
     bless($self, $class);
     return $self;
 }
@@ -130,6 +132,7 @@ sub getRatingFromTree {
 }
 
 sub getDataFields {
+    # In this class, this method is used to get the correct page to call getOutput with
     my $self = shift;
     die "Cannot parse before init is called" unless $self->{INITED};
     my $doctorId = shift;
@@ -178,7 +181,7 @@ sub getDataFields {
 			print FO $content;
 			close(FO);
 
-			return $self->SUPER::getDataFields($doctorId, $outputPath);
+			return $self->getOutput($doctorId, $outputPath);
 		    } else {
 			print STDERR "Didn't find link for $searchName in $parentPath\n";
 		    }
@@ -193,7 +196,95 @@ sub getDataFields {
 	}
     }
 
-    return $self->SUPER::getDataFields($doctorId, $path);
+    return $self->getOutput($doctorId, $path);
+}
+
+sub getOutput {
+    my $self = shift;
+    my $doctorId = shift;
+    my $path = shift;
+    my $tree = HTML::Tree->new_from_file($path);
+
+    my ($firstName, $lastName) = $self->getNameFromTree($tree, $path);
+
+    my ($rating, $ratingCount) = $self->getRatingFromTree($tree, $path);
+
+    my ($googlePage, $googleResult) = $self->getGooglePage($path);
+
+    my ($city, $state);
+    $city = $state = "--";
+
+    my $addressElem = $tree->look_down('class', 'adr');
+    if ($addressElem) {
+	my $cityElem = $addressElem->look_down('class', 'locality');
+	$city = $cityElem->as_text() if $cityElem;
+
+	my $stateElem = $addressElem->look_down('class', 'region');
+	$state = $stateElem->as_text() if $stateElem;
+    }
+
+    my ($totalComments, $easeOfAppt, $promptness, $courteous, $accurate, $bedside, $spendsTime, $followUp, $waitTime);
+    $totalComments = $easeOfAppt = $promptness = $courteous = $accurate = $bedside = $spendsTime = $followUp = $waitTime = "--";
+
+    my $commentsElem = $tree->look_down('class', 'comments_container');
+    if ($commentsElem) {
+	my $countOuterElem = $commentsElem->look_down('title', 'Find out what others are saying');
+	if ($countOuterElem && $countOuterElem->as_text() =~ m/(\d+) comments/i) {
+	    $totalComments = $1;
+	}
+
+	if ($commentsElem->as_text() =~ m/according to patient reviews, is (\d+) minutes/i) {
+	    $waitTime = $1;
+	}
+
+	my @specificsSections = $commentsElem->look_down('class', 'pad_left bold');
+	foreach my $specificsSection (@specificsSections) {
+	    my @parts = split(/<br \/>/, $specificsSection->as_HTML());
+	    foreach my $part (@parts) {
+		if ($part =~ m/((?:\w+\s*)+).*?(\d+\.?\d*)/i) {
+		    my $label = $1;
+		    my $score = $2;
+		    if ($label =~ m/Ease of Appointment/i) {
+			$easeOfAppt = $score;
+		    } elsif ($label =~ m/Promptness/i) {
+			$promptness = $score;
+		    } elsif ($label =~ m/Courteous Staff/i) {
+			$courteous = $score;
+		    } elsif ($label =~ m/Accurate Diagnosis/i) {
+			$accurate = $score;
+		    } elsif ($label =~ m/Bedside Manner/i) {
+			$bedside = $score;
+		    } elsif ($label =~ m/Spends Time/i) {
+			$spendsTime = $score;
+		    } elsif ($label =~ m/Follow Up/i) {
+			$followUp = $score;
+		    }
+		}
+	    }
+	}
+    }
+
+    my %output;
+    $output{"ID"} = $doctorId;
+    $output{"Google-Page"} = $googlePage;
+    $output{"Google-Result"} = $googleResult;
+    $output{"Review-LastName"} = $lastName;
+    $output{"Review-FirstName"} = $firstName;
+    $output{"Review-Rating"} = $rating;
+    $output{"Number-of-Ratings"} = $ratingCount;
+    $output{"City"} = $city;
+    $output{"State"} = $state;
+    $output{"Total-Comments-Submitted"} = $totalComments;
+    $output{"Ease-of-Appointment"} = $easeOfAppt;
+    $output{"Promptness"} = $promptness;
+    $output{"Courteous-Staff"} = $courteous;
+    $output{"Accurate-Diagnosis"} = $accurate;
+    $output{"Bedside-Manner"} = $bedside;
+    $output{"Spends-Time"} = $spendsTime;
+    $output{"Follow-Up"} = $followUp;
+    $output{"Wait-Time"} = $waitTime;
+    return %output;
 }
 
 1;
+
