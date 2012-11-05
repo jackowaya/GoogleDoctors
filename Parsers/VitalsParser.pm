@@ -14,7 +14,7 @@ use LWP::Simple;
 
 sub new {
     my $class = shift;
-    my $fieldsRef = ["ID", "Google-Page", "Google-Result", "Review-LastName", "Review-FirstName", "City", "State", "Total-Comments-Submitted", "Ease-of-Appointment", "Promptness", "Courteous-Staff", "Accurate-Diagnosis", "Bedside-Manner", "Spends-Time", "Follow-Up", "Wait-Time"];
+    my $fieldsRef = ["ID", "Google-Page", "Google-Result", "Review-LastName", "Review-FirstName", "Review-Rating","Number-of-Ratings", "City", "State", "Total-Comments-Submitted", "Ease-of-Appointment", "Promptness", "Courteous-Staff", "Accurate-Diagnosis", "Bedside-Manner", "Spends-Time", "Follow-Up", "Wait-Time"];
     my $self = $class->SUPER::new(shift, $fieldsRef);
     bless($self, $class);
     return $self;
@@ -48,8 +48,14 @@ sub getNameFromTree {
 	    # There is another type of page that doesn't have this.
 	    my $vcardSection = $tree->look_down('class', 'vcard');
 	    if (!$vcardSection) {
-		print STDERR "Bad vitals page $path\n";
-		return "--", "--";
+		# There is a final type of page (/reviews) that doesn't have that either.
+		$nameSection = $tree->look_down('class', 'p2_name');
+		if (!$nameSection) {
+		    print STDERR "Bad vitals page $path\n";
+		    return "--", "--";
+		} else {
+		    return ParserCommon::parseName($nameSection->as_text());
+		}
 	    }
 	    my $vcardText = $vcardSection->as_text();
 	    if ($vcardText =~ m/(.*) is a/i) {
@@ -95,9 +101,6 @@ sub getRatingFromTree {
 	    my $ratingSection = $tree->look_down('class', 'hreview-aggregate');
 	    # There is another another type of vitals page that has the same text as this but
 	    # in a different div.
-	    if (!$ratingSection) {
-		print STDERR "Bad Vitals page $path\n";
-	    }
 	    if ($ratingSection && $ratingSection->as_text() =~ m/has been reviewed by (\d+) patients?. The rating is (\d+\.?\d*)/i) {
 		$rating = $2;
 		$ratingCount = $1;
@@ -221,50 +224,99 @@ sub getOutput {
 
 	my $stateElem = $addressElem->look_down('class', 'region');
 	$state = $stateElem->as_text() if $stateElem;
-    }
-
-    my ($totalComments, $easeOfAppt, $promptness, $courteous, $accurate, $bedside, $spendsTime, $followUp, $waitTime);
-    $totalComments = $easeOfAppt = $promptness = $courteous = $accurate = $bedside = $spendsTime = $followUp = $waitTime = "--";
-
-    my $commentsElem = $tree->look_down('class', 'comments_container');
-    if ($commentsElem) {
-	my $countOuterElem = $commentsElem->look_down('title', 'Find out what others are saying');
-	if ($countOuterElem && $countOuterElem->as_text() =~ m/(\d+) comments/i) {
-	    $totalComments = $1;
-	}
-
-	if ($commentsElem->as_text() =~ m/according to patient reviews, is (\d+) minutes/i) {
-	    $waitTime = $1;
-	}
-
-	my @specificsSections = $commentsElem->look_down('class', 'pad_left bold');
-	foreach my $specificsSection (@specificsSections) {
-	    my @parts = split(/<br \/>/, $specificsSection->as_HTML());
-	    foreach my $part (@parts) {
-		if ($part =~ m/((?:\w+\s*)+).*?(\d+\.?\d*)/i) {
-		    my $label = $1;
-		    my $score = $2;
-		    if ($label =~ m/Ease of Appointment/i) {
-			$easeOfAppt = $score;
-		    } elsif ($label =~ m/Promptness/i) {
-			$promptness = $score;
-		    } elsif ($label =~ m/Courteous Staff/i) {
-			$courteous = $score;
-		    } elsif ($label =~ m/Accurate Diagnosis/i) {
-			$accurate = $score;
-		    } elsif ($label =~ m/Bedside Manner/i) {
-			$bedside = $score;
-		    } elsif ($label =~ m/Spends Time/i) {
-			$spendsTime = $score;
-		    } elsif ($label =~ m/Follow Up/i) {
-			$followUp = $score;
-		    }
-		}
+    } else {
+	# Try the /reviews version here
+	my $addressOuterElem = $tree->look_down('id', 'section_address');
+	if ($addressOuterElem) {
+	    $addressElem = $addressOuterElem->look_down('class', 'top pad_left');
+	    if ($addressElem) {
+		my @parts = split(/\<br \/\>/i, $addressElem->as_HTML());
+		my $zip;
+		($city, $state, $zip) = ParserCommon::parseCityStateZip($parts[2]);
 	    }
 	}
     }
 
+    my ($totalComments, $waitTime);
+    $totalComments = $waitTime = "--";
+
     my %output;
+    $output{"Ease-of-Appointment"} =  $output{"Promptness"} =  $output{"Courteous-Staff"} = $output{"Accurate-Diagnosis"} = $output{"Bedside-Manner"} = $output{"Spends-Time"} = $output{"Follow-Up"} = "--";
+
+
+    if ($rating ne "--") {
+	# The /name.html version of vitals
+
+	my $commentsElem = $tree->look_down('class', 'comments_container');
+	if ($commentsElem) {
+	    my $countOuterElem = $commentsElem->look_down('title', 'Find out what others are saying');
+	    if ($countOuterElem && $countOuterElem->as_text() =~ m/(\d+) comments/i) {
+		$totalComments = $1;
+	    }
+	    
+	    if ($commentsElem->as_text() =~ m/according to patient reviews, is (\d+) minutes/i) {
+		$waitTime = $1;
+	    }
+
+	    my @specificsSections = $commentsElem->look_down('class', 'pad_left bold');
+	    foreach my $specificsSection (@specificsSections) {
+		my @parts = split(/<br \/>/, $specificsSection->as_HTML());
+		foreach my $part (@parts) {
+		    $part =~ s/\<[^>]+\>//; # Strip tags
+		    if ($part =~ m/((?:\w+\s*)+).*?(\d+\.?\d*)/i) {
+			my $label = $1;
+			my $score = $2;
+			my $key = $self->getRatingsKey($label);
+			if ($key) {
+			    $output{$key} = $score;
+			}
+		    }
+		}
+	    }
+	}
+    } else {
+	# The /reviews version of vitals
+	my $ratingSection = $tree->look_down('id', 'section_ratings');
+	if ($ratingSection) {
+	    my $overallRatingsImage = $ratingSection->look_down(sub {
+		$_[0]->attr('src') =~ m/rev_stars/i
+								 });
+	    if ($overallRatingsImage && $overallRatingsImage->attr('src') =~ m/rev_stars.(\d+\.?\d*)/) {
+		$rating = $1;
+	    }
+
+	    my $ratingsCountElem = $ratingSection->look_down(sub { 
+		$_[0]->attr('class') eq 'linkBlue' && $_[0]->as_text =~ m/rating/i
+							     });
+	    if ($ratingsCountElem && $ratingsCountElem->as_text() =~ m/(\d+) rating/i) {
+		# This version of vitals doesn't differentiate between ratings and comments
+		$ratingCount = $totalComments = $1;
+	    }
+
+	    my $ratingsPartsTable = $ratingSection->look_down('_tag', 'table', 'style', 'margin-top:10px');
+	    if ($ratingsPartsTable) {
+		my @ratingsRows = $ratingsPartsTable->look_down('_tag', 'tr');
+		foreach my $ratingsRow (@ratingsRows) {
+		    my @cells = $ratingsRow->look_down('_tag', 'td');
+		    my $label = $cells[0]->as_text();
+		    if ($cells[1]->as_HTML() =~ m/bar\.(\d+\.?\d*)\.jpg/i) {
+			my $ratingVal = $1;
+			my $key = $self->getRatingsKey($label);
+			if ($key) {
+			    $output{$key} = $ratingVal;
+			}
+		    }
+		}
+	    }
+	    
+	    my $waitTimeElem = $ratingSection->look_down('_tag', 'span', 'style', 'color:#FF0000; font-weight:bold');
+	    $waitTime = $waitTimeElem->as_text() if $waitTimeElem;
+	} else {
+	    print STDERR "Bad vitals page $path\n";
+	}
+
+    }
+
     $output{"ID"} = $doctorId;
     $output{"Google-Page"} = $googlePage;
     $output{"Google-Result"} = $googleResult;
@@ -275,15 +327,30 @@ sub getOutput {
     $output{"City"} = $city;
     $output{"State"} = $state;
     $output{"Total-Comments-Submitted"} = $totalComments;
-    $output{"Ease-of-Appointment"} = $easeOfAppt;
-    $output{"Promptness"} = $promptness;
-    $output{"Courteous-Staff"} = $courteous;
-    $output{"Accurate-Diagnosis"} = $accurate;
-    $output{"Bedside-Manner"} = $bedside;
-    $output{"Spends-Time"} = $spendsTime;
-    $output{"Follow-Up"} = $followUp;
     $output{"Wait-Time"} = $waitTime;
     return %output;
+}
+
+sub getRatingsKey {
+    # Gets the key to index in the output hash for a given
+    # ratings label
+    my $self = shift;
+    my $label = shift;
+    if ($label =~ m/Ease of Appointment/i) {
+	return "Ease-of-Appointment";
+    } elsif ($label =~ m/Promptness/i) {
+	return "Promptness";
+    } elsif ($label =~ m/Courteous Staff/i) {
+	return "Courteous-Staff";
+    } elsif ($label =~ m/Accurate Diagnosis/i) {
+	return "Accurate-Diagnosis";
+    } elsif ($label =~ m/Bedside Manner/i) {
+	return "Bedside-Manner";
+    } elsif ($label =~ m/Spends Time/i) {
+	return "Spends-Time";
+    } elsif ($label =~ m/Follow Up/i) {
+	return "Follow-Up";
+    }
 }
 
 1;
