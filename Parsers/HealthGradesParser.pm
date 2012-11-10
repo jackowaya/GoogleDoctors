@@ -10,6 +10,7 @@ use strict;
 use HTML::Tree;
 use HTML::TreeBuilder;
 use Parsers::ParserCommon;
+use LWP::Simple;
 
 sub new {
     my $class = shift;
@@ -93,6 +94,41 @@ sub getRatingFromTree {
 sub getDataFields {
     my $self = shift;
     die "Cannot parse before init is called" unless $self->{INITED};
+    my $doctorId = shift;
+    my $path = shift;
+
+    my $tree = HTML::Tree->new_from_file($path);
+
+    my $surveyLink = $tree->look_down('data-hgoname', 'quality-survey-results-has-surveys');
+    if ($surveyLink) {
+	my $outputPath = $path;
+	$outputPath =~ s/\/\//\//g;
+	$outputPath =~ m/([^\/]*)$/;
+	my $filePart = $1;
+	$outputPath =~ s/[^\/]*$//;
+	my $downloadedDir = $outputPath;
+	$outputPath .= "HealthGrades";
+	mkdir $outputPath unless -d $outputPath;
+	$outputPath .= "/" . $filePart;
+
+	my $url = "http://www.healthgrades.com/" . $surveyLink->attr('href');
+	    
+	my $content = get($url);
+
+	print STDERR "Writing $url to $outputPath\n";
+	    
+	open(FO, ">$outputPath") or die "Could not open $outputPath $!";
+	print FO $content;
+	close(FO);
+
+	return $self->getData($doctorId, $outputPath);
+    } else {
+	return $self->getData($doctorId, $path);
+    }
+}
+
+sub getData {
+    my $self = shift;
     my $doctorId = shift;
     my $path = shift;
 
