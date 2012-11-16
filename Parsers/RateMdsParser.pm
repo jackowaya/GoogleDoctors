@@ -52,6 +52,21 @@ sub getRatingFromTree {
     my $self = shift;
     my $tree = shift;
 
+    my $rating = "--";
+    my $ratingCount = 0;
+
+    # RateMds redesigned their site in November 2012. Try the new one first
+    my $ratingOuterElem = $tree->look_down('_tag', 'p', 'class', 'rating');
+    if ($ratingOuterElem) {
+	my $ratingElem = $ratingOuterElem->look_down('class', 'average');
+	$rating = $ratingElem->as_text() if $ratingElem;
+
+	my $countElem = $ratingOuterElem->look_down('class', 'count');
+	$ratingCount = $countElem->as_text() if $countElem;
+
+	return $rating, $ratingCount;
+    }
+
     # The last one that matches is the one we want.
     my @ratingRows = $tree->look_down(sub {
          $_[0]->tag() eq 'tr' &&
@@ -59,8 +74,6 @@ sub getRatingFromTree {
     });
     my $ratingRow = pop(@ratingRows);
 
-    my $rating = "--";
-    my $ratingCount = 0;
     if ($ratingRow) {
 	# May not have ratings yet.
 	my @ratingRowCells = $ratingRow->look_down('_tag', 'td');
