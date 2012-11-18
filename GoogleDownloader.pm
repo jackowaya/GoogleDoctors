@@ -10,7 +10,6 @@ use ParsingFramework::FileDownloader;
 use strict;
 
 use Text::CSV;
-use LWP::Simple;
 use HTML::Tree;
 use HTML::TreeBuilder;
 use WWW::Mechanize;
@@ -65,18 +64,35 @@ sub download {
 
 }
 
+sub downloadPage {
+    my $self = shift;
+    my $url = shift;
+    my $outfile = shift;
+
+    my $mech = new WWW::Mechanize;
+    eval {
+	$mech->get($url);
+		
+	$mech->save_content($outfile);
+	
+	print "Wrote $url to $outfile\n";
+    };
+    if ($@) {
+	print STDERR "ERROR Writing $url to $outfile: $@ - creating empty file\n";
+	open(FO, ">" . $outfile);
+	print FO "ERROR Downloading: $@\n";
+	close(FO);
+    }	
+}
+
 sub getSearchAndSubs {
     my $self = shift;
     my $url = shift;
     my $outfile = shift;
     my $subfolder = shift;
     my $subprefix = shift;
-    my $mech = new WWW::Mechanize;
-    $mech->get($url);
-		
-    $mech->save_content($outfile);
-		
-    print "Wrote $url to $outfile\n";
+ 
+    $self->downloadPage($url, $outfile);
 
     mkdir $subfolder unless -d $subfolder;
 
@@ -137,14 +153,9 @@ sub getSubLinks {
 			$url =~ s/&amp;sa=.*$//;
 			$url =~ s/&sa=.*$//;
 			$url = uri_unescape($url);
-			open(FO, ">" . $outfile) or die "Cannot open file $outfile $!";
-			
-			my $content = get($url);
-				
-			print FO $content;
-				
-			print "Wrote $url to $outfile\n";
-			close(FO);
+
+			$self->downloadPage($url, $outfile);
+
 			$cnt++;
 			sleep 1;
 		}
