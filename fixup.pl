@@ -4,6 +4,7 @@
 use strict;
 use warnings;
 
+use File::Path qw(make_path);
 use FindBin;
 use lib "$FindBin::Bin/..";
 use ParsingFramework::ParsingRunner;
@@ -36,6 +37,9 @@ my $parserName = lc(shift @ARGV);
 my $inputFile = shift @ARGV;
 my $downloadDir = shift @ARGV;
 my $resultDir = shift @ARGV;
+
+make_path($downloadDir) unless -d $downloadDir;
+make_path($resultDir) unless -d $resultDir;
 
 my %subparsers = $subparserManager->getSubparsers($resultDir);
 my @subparserList = values(%subparsers);
