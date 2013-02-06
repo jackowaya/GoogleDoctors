@@ -2,7 +2,7 @@ package UCompareParser;
 use Parsers::DoctorFileParser;
 @ISA = ("DoctorFileParser");
 
-# Parser class for ucomparehealthcare.com. Gets: doctorID, Review-Lastname, City, State, Zip-Code, Review-Firstname, rating, Recommendation, Waiting-Time, Ease-of-Appointment, Wait-Time-Length, Staff-Professional-Friendly, Problem-Accurately-Diagnosed, Doctor-Spent-Enough-Time, Appropriate-Follow-Up
+# Parser class for ucomparehealthcare.com. Gets: doctorID, Review-Lastname, City, State, Zip-Code, Review-Firstname, Review-Rating, Number-of-Ratings, Ease-of-Appointment, Wait-Time-Length, Staff-Professional-Friendly, Problem-Accurately-Diagnosed, Doctor-Spent-Enough-Time, Appropriate-Follow-Up
 # To use this, you must call init and teardown yourself
 
 use strict;
@@ -13,7 +13,7 @@ use LWP::Simple;
 
 sub new {
     my $class = shift;
-    my $fieldsRef = ["ID", "Google-Page", "Google-Result", "Review-LastName", "Review-FirstName", "City", "State", "Review-Rating", "Ease-of-Appointment", "Wait-Time-Length", "Staff-Professional-Friendly", "Problem-Accurately-Diagnosed", "Doctor-Spent-Enough-Time", "Appropriate-Follow-Up"];
+    my $fieldsRef = ["ID", "Google-Page", "Google-Result", "Review-LastName", "Review-FirstName", "City", "State", "Review-Rating", "Number-of-Ratings", "Ease-of-Appointment", "Wait-Time-Length", "Staff-Professional-Friendly", "Problem-Accurately-Diagnosed", "Doctor-Spent-Enough-Time", "Appropriate-Follow-Up"];
     my $self = $class->SUPER::new(shift, $fieldsRef);
     bless($self, $class);
     return $self;
@@ -80,7 +80,7 @@ sub getRatingFromTree {
 	$reviewSection = $tree->look_down('class', 'clear rating-average');
 	if ($reviewSection) {
 	    my $reviewElem = $reviewSection->look_down('_tag', 'a');
-	    if ($reviewElem && $reviewElem->attr('title') =~ m/(\d+\.?\d*).*\((\d+) review/i) {
+	    if ($reviewElem && $reviewElem->attr('title') =~ m/(\d+\.?\d*)\/5.*\((\d+) review/i) {
 		$rating = $1;
 		$ratingCount = $2;
 	    } else {
