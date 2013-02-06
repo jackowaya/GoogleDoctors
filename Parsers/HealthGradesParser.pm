@@ -165,8 +165,10 @@ sub getData {
     }
 
     my $numSurveys = "--";
-    my $surveyCountElem = $tree->look_down('class', 'qualitySurveyGenericBoxContent');
-    if ($surveyCountElem && $surveyCountElem->as_text() =~ m/Based on (\d+) Surveys/i) {
+    my $surveyCountElem = $tree->look_down('class', 'qualitySurveyHeaderRightColumn');
+    if ($surveyCountElem && $surveyCountElem->as_text() =~ m/based on (\d+) completed surveys/i) {
+	$numSurveys = $1;
+    } elsif ($surveyCountElem && $surveyCountElem->as_text() =~ m/based on (\d+) patient satisfaction surveys/i) {
 	$numSurveys = $1;
     }
 
