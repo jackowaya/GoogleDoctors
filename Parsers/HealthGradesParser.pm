@@ -14,7 +14,7 @@ use LWP::Simple;
 
 sub new {
     my $class = shift;
-    my $fieldsRef = ["ID", "Google-Page", "Google-Result", "Review-LastName", "Review-FirstName", "Gender", "City", "State", "Zip-Code", "Recommendation", "Number-Patient-Surveys", "Trust", "Communicates", "Listens", "Time-Spent", "Scheduling-Appts", "Office-Environment", "Office-Friendliness", "Wait-Time"];
+    my $fieldsRef = ["ID", "Google-Page", "Google-Result", "Review-LastName", "Review-FirstName", "Gender", "City", "State", "Zip-Code", "Number-of-Ratings", "Recommendation", "Number-Patient-Surveys", "Trust", "Communicates", "Listens", "Time-Spent", "Scheduling-Appts", "Office-Environment", "Office-Friendliness", "Wait-Time"];
     my $self = $class->SUPER::new(shift, $fieldsRef);
     bless($self, $class);
     return $self;
@@ -170,6 +170,9 @@ sub getData {
 	$numSurveys = $1;
     } elsif ($surveyCountElem && $surveyCountElem->as_text() =~ m/based on (\d+) patient satisfaction survey/i) {
 	$numSurveys = $1;
+    }
+    if ($ratingCount == 0 && $numSurveys ne "--") {
+	$ratingCount = $numSurveys;
     }
 
     my ($recommendation, $trust, $communicates, $listens, $timeSpent, $scheduling, $officeEnv, $officeFriendly, $waitTime);
