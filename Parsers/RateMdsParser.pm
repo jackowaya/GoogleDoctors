@@ -54,16 +54,31 @@ sub getRatingFromTree {
 
     my $rating = "--";
     my $ratingCount = 0;
+    # RateMds Redesigned their site in August 2013. Try this one first
+    my $ratingOuterElem = $tree->look_down('_tag', 'span', 'class', "rating");
+    if ($ratingOuterElem) {
+    	my $ratingElem = $ratingOuterElem->look_down('class', 'average');
+	print "is this working? Original step 1", '\n';	
+   	$rating = $ratingElem->as_text() if $ratingElem;
+    
+    	my $countElem = $ratingOuterElem->look_down('class', 'count');
+ 	print "is this working? Original", '\n';	
+    	$ratingCount = $countElem->as_text() if $countElem;
+    
+	return $rating, $ratingCount;
+    }
 
     # RateMds redesigned their site in November 2012. Try the new one first
-    my $ratingOuterElem = $tree->look_down('_tag', 'p', 'class', 'rating');
+    $ratingOuterElem = $tree->look_down('_tag', 'p', 'class', 'rating');
     if ($ratingOuterElem) {
-	my $ratingElem = $ratingOuterElem->look_down('class', 'average');
-	$rating = $ratingElem->as_text() if $ratingElem;
-
-	my $countElem = $ratingOuterElem->look_down('class', 'count');
-	$ratingCount = $countElem->as_text() if $countElem;
-
+    	my $ratingElem = $ratingOuterElem->look_down('class', 'average');
+	print "is this working? Original step 1", '\n';	
+   	$rating = $ratingElem->as_text() if $ratingElem;
+    
+    	my $countElem = $ratingOuterElem->look_down('class', 'count');
+ 	print "is this working? Original", '\n';	
+    	$ratingCount = $countElem->as_text() if $countElem;
+    
 	return $rating, $ratingCount;
     }
 

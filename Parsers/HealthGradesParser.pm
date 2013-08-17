@@ -14,7 +14,7 @@ use LWP::Simple;
 
 sub new {
     my $class = shift;
-    my $fieldsRef = ["ID", "Google-Page", "Google-Result", "Review-LastName", "Review-FirstName", "Gender", "City", "State", "Zip-Code", "Number-of-Ratings", "Recommendation", "Number-Patient-Surveys", "Trust", "Communicates", "Listens", "Time-Spent", "Scheduling-Appts", "Office-Environment", "Office-Friendliness", "Wait-Time"];
+    my $fieldsRef = ["ID", "Google-Page", "Google-Result", "Review-LastName", "Review-FirstName", "Gender", "City", "State", "Zip-Code", "Review-Rating", "Number-of-Ratings", "Recommendation", "Number-Patient-Surveys", "Trust", "Communicates", "Listens", "Time-Spent", "Scheduling-Appts", "Office-Environment", "Office-Friendliness", "Wait-Time"];
     my $self = $class->SUPER::new(shift, $fieldsRef);
     bless($self, $class);
     return $self;
@@ -65,6 +65,21 @@ sub getRatingFromTree {
     my $ratingSection = $tree->look_down('id', 'overallPatientRating');
     my $rating = "--";
     my $ratingCount = 0;
+
+    # HealthGrades Redesigned their site in August 2013. Try this one first
+    $ratingSection = $tree->look_down('_tag', 'div', 'class', "calloutContainer size-medium ");
+    if ($ratingSection) {
+	my $ratingElem = $ratingSection->look_down('_tag', 'a');
+	$ratingElem = $ratingElem->look_down('_tag', 'span');
+	$rating = $ratingElem->as_text() if $ratingElem;
+
+	my $countElem = $ratingSection ->look_down('_tag', 'a', 'class', 'responsesLabel');
+	$countElem = $countElem->look_down('_tag', 'span');
+	$ratingCount = $countElem->as_text() if $countElem;
+
+	return $rating, $ratingCount;
+    }
+
 
     if ($ratingSection) {
 	my $ratingElem = $ratingSection->look_down('class', 'value');

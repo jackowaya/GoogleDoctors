@@ -39,8 +39,13 @@ sub getNameFromTree {
     my $self = shift;
     my $tree = shift;
     my $path = shift;
+    
+    my $reviewSection = $tree->look_down('_tag', 'h1', 'itemprop', 'name');
+    if ($reviewSection) {
+	return ParserCommon::parseName($reviewSection->as_text());
+    }
 
-    my $reviewSection = $tree->look_down('id', 'review_section');
+    $reviewSection = $tree->look_down('id', 'review_section');
     if (!$reviewSection) {
 	# There is another type of vitals page that doesn't have review_section.
 	my $nameSection = $tree->look_down('class', 'vcard rate');
@@ -88,7 +93,25 @@ sub getRatingFromTree {
 
     my $rating = "--";
     my $ratingCount = 0;
-    my $reviewSection = $tree->look_down('id', 'review_section');
+    my $totalComments = 0;
+    # vitals has redesigned their page layout as of August 2013, Try this first
+    my $reviewSection = $tree->look_down('_tag', 'div', 'itemprop', 'aggregateRating');
+    
+    if ($reviewSection) {
+	my$reviewElem = $reviewSection->look_down('_tag', 'span', 'itemprop', 'ratingValue');
+	$rating = $reviewElem->as_text();
+
+	my $countElem = $reviewSection->look_down('_tag', 'h3', 'itemprop', 'reviewCount');
+	if ($countElem) {	
+	    $ratingCount = $countElem->as_text();
+
+	}
+
+	return $rating, $ratingCount;
+    }
+
+
+    $reviewSection = $tree->look_down('id', 'review_section');
     if (!$reviewSection) {
 	# There is another type of vitals page that doesn't have review_section.
 	
@@ -142,7 +165,67 @@ sub getDataFields {
     my $path = shift;
 
     my $tree = HTML::Tree->new_from_file($path);
+    if ($tree) {
+	$tree = $tree->look_down('_tag', 'div', 'class', 'reviews block');
+	if($tree) {    
+	   	# We got a search page, so we need to download another one.
+		my $outputPath = $path;
+		$outputPath =~ s/\/\//\//g;
+		$outputPath =~ m/([^\/]*)$/;
+		my $filePart = $1;
+		$outputPath =~ s/[^\/]*$//;
+		my $downloadedDir = $outputPath;
+		$outputPath .= "vitals";
+		mkdir $outputPath unless -d $outputPath;
+		$outputPath .= "/" . $filePart;
 
+		# Look at the parent downloaded page to get which doctor we searched for.
+		my $parentDir = $downloadedDir;
+		$parentDir =~ s/[^\/]*\/$//;
+		my $parentFileName = $filePart;
+		# Need to cut off the last .something before the .html
+		$parentFileName =~ s/\d+\.html/html/;
+		my $parentPath = "$parentDir/$parentFileName";
+		if (-e $parentPath) {
+		    my $parentTree = HTML::Tree->new_from_file($parentPath);
+		    # Get the first word of the search.
+		    my $titleElem = $parentTree->look_down('_tag', 'title');
+		    if ($titleElem) {
+			my $title = $titleElem->as_text();
+			if ($title =~ /^(\w+)/) {
+			    my $searchName = $1;
+			    
+			    my $link = $tree->look_down(sub {
+				$_[0]->tag() eq 'a' &&
+			   	$_[0]->attr('class') eq 'link'
+							});
+			    if ($link) {
+				my $url = $link->attr('href');
+		    
+				my $content = get($url);
+		    
+				open(FO, ">$outputPath") or die "Could not open $outputPath $!";
+				print FO $content;
+				close(FO);
+
+				return $self->getOutput($doctorId, $outputPath);
+				print $outputPath."\n";
+			    } else {
+				print STDERR "Didn't find link for $searchName in $parentPath\n";
+			    }
+			} else { 
+			    print STDERR "Empty title in $parentPath\n";
+			}
+		    } else {
+			print STDERR "No title in $parentPath\n";
+		    }
+		} else {
+		    print STDERR "Didn't find parent for bad vitals page $path (parent should be $parentPath)\n";
+		}
+	}
+    }
+
+    $tree = HTML::Tree->new_from_file($path);
     if ($tree->look_down('class', 'cityspec_overview')) {
 	# We got a search page, so we need to download another one.
 	my $outputPath = $path;
@@ -214,7 +297,7 @@ sub getOutput {
 
     my ($googlePage, $googleResult) = $self->getGooglePage($path);
 
-    my ($city, $state);
+    my ($city, $state, $zip);
     $city = $state = "--";
 
     my $addressElem = $tree->look_down('class', 'adr');
@@ -224,18 +307,31 @@ sub getOutput {
 
 	my $stateElem = $addressElem->look_down('class', 'region');
 	$state = $stateElem->as_text() if $stateElem;
-    } else {
+    } elsif ($addressElem) {
 	# Try the /reviews version here
 	my $addressOuterElem = $tree->look_down('id', 'section_address');
 	if ($addressOuterElem) {
 	    $addressElem = $addressOuterElem->look_down('class', 'top pad_left');
 	    if ($addressElem) {
 		my @parts = split(/\<br \/\>/i, $addressElem->as_HTML());
-		my $zip;
 		($city, $state, $zip) = ParserCommon::parseCityStateZip($parts[2]);
 	    }
 	}
+    } else {
+	# Try the August 2013 review version
+	$addressElem  = $tree->look_down('_tag', 'address', 'itemprop', 'address');
+	if ($addressElem) {
+	    my $cityElem = $addressElem->look_down('_tag', 'span', 'itemprop', 'addressLocality');
+	    $city = $cityElem->as_text() if $cityElem;
+
+	    my $stateElem = $addressElem->look_down('_tag', 'span', 'itemprop', 'addressRegion');
+	    $state = $stateElem->as_text() if $stateElem;
+
+	    my $zipElem = $addressElem->look_down('_tag', 'span', 'itemprop', 'postalCode');
+	    $zip = $zipElem->as_text() if $zipElem;
+	}
     }
+
 
     my ($totalComments, $waitTime);
     $totalComments = $waitTime = "--";
@@ -243,8 +339,30 @@ sub getOutput {
     my %output;
     $output{"Ease-of-Appointment"} =  $output{"Promptness"} =  $output{"Courteous-Staff"} = $output{"Accurate-Diagnosis"} = $output{"Bedside-Manner"} = $output{"Spends-Time"} = $output{"Follow-Up"} = "--";
 
-
-    if ($rating ne "--") {
+    # Vitals redesigned as of August 2013, try this first
+    my $ratingSection = $tree->look_down('_tag', 'div', 'class', 'summary');
+    
+    if($ratingSection) {
+	my @ratingsTables = $ratingSection->look_down('_tag', 'td', 'class', 'questions');
+		    	    
+	foreach my $ratingsTable (@ratingsTables) {
+	    my @ratingsRow = $ratingsTable->look_down('_tag', 'tr');
+	    foreach my $ratingRow (@ratingsRow) {
+		my $label = $ratingRow->look_down('_tag', 'td', 'class', 'question');
+		my $cell = $ratingRow->look_down('_tag', 'li');
+	        $label = $label->as_text();
+	    	if ($cell) {
+		    if ($cell->as_text() =~ m/Currently\s(\d)/i) {
+	    	    	my $ratingVal = $1;
+		    	my $key = $self->getRatingsKey($label);
+	    	    	if ($key) {
+		   	    $output{$key} = $ratingVal;
+	    	    	}
+	    	    }
+	    	}
+	    }
+	}
+    }elsif ($rating ne "--") {
 	# The /name.html version of vitals
 
 	my $commentsElem = $tree->look_down('class', 'comments_container');
@@ -274,7 +392,7 @@ sub getOutput {
 		}
 	    }
 	}
-    } else {
+    } elsif (!$ratingSection) {
 	# The /reviews version of vitals
 	my $ratingSection = $tree->look_down('id', 'section_ratings');
 	if ($ratingSection) {
@@ -312,9 +430,18 @@ sub getOutput {
 	    my $waitTimeElem = $ratingSection->look_down('_tag', 'span', 'style', 'color:#FF0000; font-weight:bold');
 	    $waitTime = $waitTimeElem->as_text() if $waitTimeElem;
 	} else {
-	    print STDERR "Bad vitals page $path\n";
+	    print STDERR "Bad Vitals Page $path\n";
 	}
+    	
+    }
 
+    if ($totalComments eq "--") {
+        # There is a nother way to get these
+        my $totalCommentsOuterElem = $tree->look_down('id', 'overall_total_reviews');
+        if ($totalCommentsOuterElem) {
+            my $totalCommentsElem = $totalCommentsOuterElem->look_down('_tag', 'h3');
+            $totalComments = $totalCommentsElem->as_text() if $totalCommentsElem;
+        }
     }
 
     $output{"ID"} = $doctorId;
@@ -350,6 +477,8 @@ sub getRatingsKey {
 	return "Spends-Time";
     } elsif ($label =~ m/Follow Up/i) {
 	return "Follow-Up";
+    } elsif ($label =~ m/Wait Time/i) {
+	return "Wait-Time";
     }
 }
 
