@@ -111,10 +111,14 @@ sub getDataFields {
     die "Cannot parse before init is called" unless $self->{INITED};
     my $doctorId = shift;
     my $path = shift;
-
+    
     my $tree = HTML::Tree->new_from_file($path);
 
-    my $surveyLink = $tree->look_down('data-hgoname', 'quality-survey-results-has-surveys');
+    my $surveyLink = $tree->look_down('_tag', 'div', 'class', "calloutContainer size-medium ");
+    if ($surveyLink) {
+	$surveyLink = $surveyLink->look_down('_tag', 'a', 'class', "responsesLabel");
+    }
+
     if ($surveyLink) {
 	my $outputPath = $path;
 	$outputPath =~ s/\/\//\//g;
@@ -129,7 +133,7 @@ sub getDataFields {
 	my $url = "http://www.healthgrades.com/" . $surveyLink->attr('href');
 	    
 	my $content = get($url);
-
+		
 	print STDERR "Writing $url to $outputPath\n";
 	    
 	open(FO, ">$outputPath") or die "Could not open $outputPath $!";
@@ -138,7 +142,32 @@ sub getDataFields {
 
 	return $self->getData($doctorId, $outputPath);
     } else {
-	return $self->getData($doctorId, $path);
+    	$surveyLink = $tree->look_down('data-hgoname', 'quality-survey-results-has-surveys');
+	if ($surveyLink) {
+	    my $outputPath = $path;
+	    $outputPath =~ s/\/\//\//g;
+	    $outputPath =~ m/([^\/]*)$/;
+	    my $filePart = $1;
+	    $outputPath =~ s/[^\/]*$//;
+	    my $downloadedDir = $outputPath;
+	    $outputPath .= "HealthGrades";
+	    mkdir $outputPath unless -d $outputPath;
+	    $outputPath .= "/" . $filePart;
+
+	    my $url = "http://www.healthgrades.com/" . $surveyLink->attr('href');
+	    
+	    my $content = get($url);
+
+	    print STDERR "Writing $url to $outputPath\n";
+	    
+	    open(FO, ">$outputPath") or die "Could not open $outputPath $!";
+	    print FO $content;
+	    close(FO);
+
+    	    return $self->getData($doctorId, $outputPath);
+	} else {
+	    return $self->getData($doctorId, $path);
+	}
     }
 }
 
@@ -158,10 +187,11 @@ sub getData {
     my ($city, $state, $zip, $gender);
     $city = $state = $zip = $gender = "--";
 
-    my $genderOuterElem = $tree->look_down('class', 'summarySpecialtyInner');
+    my $genderOuterElem = $tree->look_down('_tag', 'div', 'class', "summaryInnerTable" );
     if ($genderOuterElem) {
-	my $genderInnerElem = $genderOuterElem->look_down('_tag', 'p');
-	if ($genderInnerElem && $genderInnerElem->as_text() =~ m/^\s*((?:Fe)male),/i) {
+	my $genderInnerElem = $genderOuterElem->look_down('_tag', 'h2');
+	if ($genderInnerElem && $genderInnerElem->as_text() =~ m/((?:Fe)?male),/i) {
+	    
 	    $gender = $1;
 	}
     }
@@ -192,41 +222,39 @@ sub getData {
 
     my ($recommendation, $trust, $communicates, $listens, $timeSpent, $scheduling, $officeEnv, $officeFriendly, $waitTime);
     $recommendation = $trust = $communicates = $listens = $timeSpent = $scheduling = $officeEnv = $officeFriendly = $waitTime = "--";
-    my $surveyOuterElem = $tree->look_down('class', 'surveyLayoutInner');
+    my $surveyOuterElem = $tree->look_down('_tag', 'table', 'class', 'surveyTable');
     if ($surveyOuterElem) {
 	my @rows = $surveyOuterElem->look_down('_tag', 'tr');
 	if (@rows) {
 	    foreach my $row (@rows) {
 		my @cells = $row->look_down('_tag', 'td');
-		if (@cells && scalar(@cells) == 3) {
+		if (@cells && scalar(@cells) == 2) {
 
-		    my $labelElem = $cells[0]->look_down('_tag', 'strong');
+		    my $labelElem = $cells[0]->look_down('class', 'surveyLabelCol surveyRow');
 		    my $label = "";
 		    $label = $labelElem->as_text() if $labelElem;
-		    my $score = "";
-		    my $scoreElem = $cells[2]->look_down(sub {
-			$_[0]->tag() eq "span" && $_[0]->attr('class') =~ m/ratingBar/i
-							 });
-		    if ($scoreElem && $scoreElem->attr('class') =~ m/fill-to-(\d+)/i) {
-			$score = $1;
+	 	    my $score = "";
+		    my $scoreElem = $cells[1]->look_down('_tag', 'span', 'class', 'callout');
+		    if ($scoreElem) {
+			$score = $scoreElem->as_text();
 		    }
 		    
-		    if ($label =~ m/Scheduling Appointment/i) {
+		    if ($label =~ m/Scheduling/i) {
 			$scheduling = $score;
 		    } elsif ($label =~ m/Office Environment/i) {
 			$officeEnv = $score;
-		    } elsif ($label =~ m/Office Friendliness/i) {
+		    } elsif ($label =~ m/Friendliness/i) {
 			$officeFriendly = $score;
 		    } elsif ($label =~ m/Wait Time/i) {
-			my $waitElem = $cells[2]->look_down('_tag', 'strong');
+			my $waitElem = $cells[1]->look_down('_tag', 'span', 'class', 'callout');
 			$waitTime = $waitElem->as_text() if $waitElem;
 		    } elsif ($label =~ m/Level of Trust/i) {
 			$trust = $score;
-		    } elsif ($label =~ m/Helps Patients Understand/i) {
+		    } elsif ($label =~ m/provider explains/i) {
 			$communicates = $score;
 		    } elsif ($label =~ m/Listens and Answers/i) {
 			$listens = $score;
-		    } elsif ($label =~ m/Time Spent/i) {
+		    } elsif ($label =~ m/spends/i) {
 			$timeSpent = $score;
 		    } elsif ($label =~ m/Recommend/i) {
 			$recommendation = $score;
@@ -248,8 +276,8 @@ sub getData {
     $output{"State"} = $state;
     $output{"Zip-Code"} = $zip;
     $output{"Gender"} = $gender;
-    $output{"Recommendation"} = $recommendation;
-    $output{"Number-Patient-Surveys"} = $numSurveys;
+    $output{"Recommendation"} = $rating;
+    $output{"Number-Patient-Surveys"} = $ratingCount;
     $output{"Trust"} = $trust;
     $output{"Communicates"} = $communicates;
     $output{"Listens"} = $listens;
