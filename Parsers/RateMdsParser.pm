@@ -58,12 +58,10 @@ sub getRatingFromTree {
     my $ratingOuterElem = $tree->look_down('_tag', 'span', 'class', "rating");
     if ($ratingOuterElem) {
     	my $ratingElem = $ratingOuterElem->look_down('class', 'average');
-	print "is this working? Original step 1", '\n';	
-   	$rating = $ratingElem->as_text() if $ratingElem;
+	$rating = $ratingElem->as_text() if $ratingElem;
     
     	my $countElem = $ratingOuterElem->look_down('class', 'count');
- 	print "is this working? Original", '\n';	
-    	$ratingCount = $countElem->as_text() if $countElem;
+ 	$ratingCount = $countElem->as_text() if $countElem;
     
 	return $rating, $ratingCount;
     }
@@ -72,12 +70,10 @@ sub getRatingFromTree {
     $ratingOuterElem = $tree->look_down('_tag', 'p', 'class', 'rating');
     if ($ratingOuterElem) {
     	my $ratingElem = $ratingOuterElem->look_down('class', 'average');
-	print "is this working? Original step 1", '\n';	
-   	$rating = $ratingElem->as_text() if $ratingElem;
+	$rating = $ratingElem->as_text() if $ratingElem;
     
     	my $countElem = $ratingOuterElem->look_down('class', 'count');
- 	print "is this working? Original", '\n';	
-    	$ratingCount = $countElem->as_text() if $countElem;
+ 	$ratingCount = $countElem->as_text() if $countElem;
     
 	return $rating, $ratingCount;
     }
