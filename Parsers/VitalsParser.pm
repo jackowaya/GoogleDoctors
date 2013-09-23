@@ -2,7 +2,7 @@ package VitalsParser;
 use Parsers::DoctorFileParser;
 @ISA = ("DoctorFileParser");
 
-# Parser class for vitals.com. Gets: doctorID, Review-Lastname, Review-Firstname, rating, City, Zip-Code, State, Total-Comments-Submitted, Ease-of-Appointment, Promptness, Courteous-Staff, Accurate-Diagnosis, Bedside-Manner, Spends-Time, Follow-Up, Wait-Time
+# Parser class for vitals.com. Gets: doctorID, Review-Lastname, Review-Firstname, Gender rating, City, Zip-Code, State, Total-Comments-Submitted, Ease-of-Appointment, Promptness, Courteous-Staff, Accurate-Diagnosis, Bedside-Manner, Spends-Time, Follow-Up, Wait-Time
 
 # To use this, you must call init and teardown yourself
 
@@ -40,50 +40,54 @@ sub getNameFromTree {
     my $tree = shift;
     my $path = shift;
     
-    my $reviewSection = $tree->look_down('_tag', 'h1', 'itemprop', 'name');
-    if ($reviewSection) {
-	return ParserCommon::parseName($reviewSection->as_text());
+    my $nameElem = $tree->look_down('_tag','h1');
+    if (!$nameElem) {
+	print STDERR "Bad Vitals page $path\n";
+	return "--", "--";
     }
 
-    $reviewSection = $tree->look_down('id', 'review_section');
-    if (!$reviewSection) {
-	# There is another type of vitals page that doesn't have review_section.
-	my $nameSection = $tree->look_down('class', 'vcard rate');
-	if (!$nameSection) {
-	    # There is another type of page that doesn't have this.
-	    my $vcardSection = $tree->look_down('class', 'vcard');
-	    if (!$vcardSection) {
-		# There is a final type of page (/reviews) that doesn't have that either.
-		$nameSection = $tree->look_down('class', 'p2_name');
-		if (!$nameSection) {
-		    print STDERR "Bad vitals page $path\n";
-		    return "--", "--";
-		} else {
-		    return ParserCommon::parseName($nameSection->as_text());
-		}
-	    }
-	    my $vcardText = $vcardSection->as_text();
-	    if ($vcardText =~ m/(.*) is a/i) {
-		my $name = $1;
-		$name =~ s/Dr\.\s*//i;
-		return ParserCommon::parseName($name);
-	    } else {
-		print STDERR "Bad vitals page $path\n";
-		return "--", "--";
-	    }
-	}
-	my $nameElem = $nameSection->look_down('_tag', 'h1', 'class', 'fn txtOrangeL');
-	my $fullName = $nameElem->as_text();
-	
-	return ParserCommon::parseName($fullName);
-
-    }
-	
-    my $nameSection = $reviewSection->look_down('_tag', 'h2');
-
-    my $fullName = $nameSection->as_text();
-    $fullName =~ s/\s+Doctor\s+Ratings\s*$//;
+    my $fullName = $nameElem->as_text();
+    $fullName =~ s/^\s*Dr\.\s*//;
     return ParserCommon::parseName($fullName);
+    # my $reviewSection = $tree->look_down('id', 'review_section');
+    # if (!$reviewSection) {
+	# # There is another type of vitals page that doesn't have review_section.
+	# my $nameSection = $tree->look_down('class', 'vcard rate');
+	# if (!$nameSection) {
+	    # # There is another type of page that doesn't have this.
+	    # my $vcardSection = $tree->look_down('class', 'vcard');
+	    # if (!$vcardSection) {
+		# # There is a final type of page (/reviews) that doesn't have that either.
+		# $nameSection = $tree->look_down('class', 'p2_name');
+		# if (!$nameSection) {
+		    # print STDERR "Bad vitals page $path\n";
+		    # return "--", "--";
+		# } else {
+		    # return ParserCommon::parseName($nameSection->as_text());
+		# }
+	    # }
+	    # my $vcardText = $vcardSection->as_text();
+	    # if ($vcardText =~ m/(.*) is a/i) {
+		# my $name = $1;
+		# $name =~ s/Dr\.\s*//i;
+		# return ParserCommon::parseName($name);
+	    # } else {
+		# print STDERR "Bad vitals page $path\n";
+		# return "--", "--";
+	    # }
+	# }
+	# my $nameElem = $nameSection->look_down('_tag', 'h1', 'class', 'fn txtOrangeL');
+	# my $fullName = $nameElem->as_text();
+	
+	# return ParserCommon::parseName($fullName);
+
+    # }
+	
+    # my $nameSection = $reviewSection->look_down('_tag', 'h2');
+
+    # my $fullName = $nameSection->as_text();
+    # $fullName =~ s/\s+Doctor\s+Ratings\s*$//;
+    # return ParserCommon::parseName($fullName);
 }
 
 sub getRatingFromTree {
@@ -93,66 +97,75 @@ sub getRatingFromTree {
 
     my $rating = "--";
     my $ratingCount = 0;
-    my $totalComments = 0;
-    # vitals has redesigned their page layout as of August 2013, Try this first
-    my $reviewSection = $tree->look_down('_tag', 'div', 'itemprop', 'aggregateRating');
     
+    my $starElement;
+    my $countElement;
+    my $reviewSection = $tree->look_down('itemprop', 'aggregateRating');
+    # /review version
     if ($reviewSection) {
-	my$reviewElem = $reviewSection->look_down('_tag', 'span', 'itemprop', 'ratingValue');
-	$rating = $reviewElem->as_text();
-
-	my $countElem = $reviewSection->look_down('_tag', 'h3', 'itemprop', 'reviewCount');
-	if ($countElem) {	
-	    $ratingCount = $countElem->as_text();
+	$starElement = $reviewSection->look_down('itemprop', 'ratingValue');
+	if ($starElement){
+	   $rating = $starElement->as_text();
 
 	}
+	$countElement = $reviewSection->look_down('itemprop', 'reviewCount');
+	if ($countElement){
+	   $ratingCount = $countElement->as_text();
 
-	return $rating, $ratingCount;
+	}
     }
-
-
-    $reviewSection = $tree->look_down('id', 'review_section');
-    if (!$reviewSection) {
-	# There is another type of vitals page that doesn't have review_section.
+    # .html version
+    else{
+	 $starElement = $tree->look_down('class','score star large');
+	 if($starElement){
+	     my $text = $starElement->as_text;
+	     $text =~ m/Currently (\d(\.\d)?) of 4 stars/i;
+	     $rating = $1;
+	     $countElement = $starElement->look_down('class', 'count');
+	     $text =~ m/\((\d)\)/i;
+	     $ratingCount = $1;
+	 }
+    }
+	# # There is another type of vitals page that doesn't have review_section.
 	
-	my $overallRatingImg = $tree->look_down(sub {
-	    $_[0]->tag() eq 'img' &&
-		$_[0]->attr('src') =~ m/r_stars\d\.\d\.gif/i
-						});
-	if (!$overallRatingImg) {
-	    # There is another type of vitals page that doesn't have this image either.
-	    my $ratingSection = $tree->look_down('class', 'hreview-aggregate');
-	    # There is another another type of vitals page that has the same text as this but
-	    # in a different div.
-	    if ($ratingSection && $ratingSection->as_text() =~ m/has been reviewed by (\d+) patients?. The rating is (\d+\.?\d*)/i) {
-		$rating = $2;
-		$ratingCount = $1;
-	    }
+	# my $overallRatingImg = $tree->look_down(sub {
+	    # $_[0]->tag() eq 'img' &&
+		# $_[0]->attr('src') =~ m/r_stars\d\.\d\.gif/i
+						# });
+	# if (!$overallRatingImg) {
+	    # # There is another type of vitals page that doesn't have this image either.
+	    # my $ratingSection = $tree->look_down('class', 'hreview-aggregate');
+	    # # There is another another type of vitals page that has the same text as this but
+	    # # in a different div.
+	    # if ($ratingSection && $ratingSection->as_text() =~ m/has been reviewed by (\d+) patients?. The rating is (\d+\.?\d*)/i) {
+		# $rating = $2;
+		# $ratingCount = $1;
+	    # }
 
-	    return $rating, $ratingCount;
-	}
+	    # return $rating, $ratingCount;
+	# }
 
-	$overallRatingImg->attr('src') =~ m/r_stars(\d\.\d)\.gif/i;
-	$rating = $1;
+	# $overallRatingImg->attr('src') =~ m/r_stars(\d\.\d)\.gif/i;
+	# $rating = $1;
 
-	my $summaryDiv = $tree->look_down('id', 'summary_container');
-	if ($summaryDiv) {
-	    my $numRatingsSpan = $summaryDiv->look_down('class', 'count');
-	    $ratingCount = $numRatingsSpan->as_text() if $numRatingsSpan;
-	}
-    } else {
-	my $ratingSection = $reviewSection->look_down('class', 'value');
-	$rating = $ratingSection->as_text();
+	# my $summaryDiv = $tree->look_down('id', 'summary_container');
+	# if ($summaryDiv) {
+	    # my $numRatingsSpan = $summaryDiv->look_down('class', 'count');
+	    # $ratingCount = $numRatingsSpan->as_text() if $numRatingsSpan;
+	# }
+    # } else {
+	# my $ratingSection = $reviewSection->look_down('class', 'value');
+	# $rating = $ratingSection->as_text();
 
-	my $countSection = $reviewSection->look_down(sub {
-	    $_[0]->tag() eq 'p' &&
-		$_[0]->as_text() =~ m/Based on \d+ Ratings/i
-						     });
-	if ($countSection) {
-	    $countSection->as_text() =~ m/Based on (\d+) Ratings/i;
-	    $ratingCount = $1;
-	}
-    }
+	# my $countSection = $reviewSection->look_down(sub {
+	    # $_[0]->tag() eq 'p' &&
+		# $_[0]->as_text() =~ m/Based on \d+ Ratings/i
+						     # });
+	# if ($countSection) {
+	    # $countSection->as_text() =~ m/Based on (\d+) Ratings/i;
+	    # $ratingCount = $1;
+	# }
+    # }
 
     return $rating, $ratingCount;
 }
@@ -165,67 +178,7 @@ sub getDataFields {
     my $path = shift;
 
     my $tree = HTML::Tree->new_from_file($path);
-    if ($tree) {
-	$tree = $tree->look_down('_tag', 'div', 'class', 'reviews block');
-	if($tree) {    
-	   	# We got a search page, so we need to download another one.
-		my $outputPath = $path;
-		$outputPath =~ s/\/\//\//g;
-		$outputPath =~ m/([^\/]*)$/;
-		my $filePart = $1;
-		$outputPath =~ s/[^\/]*$//;
-		my $downloadedDir = $outputPath;
-		$outputPath .= "vitals";
-		mkdir $outputPath unless -d $outputPath;
-		$outputPath .= "/" . $filePart;
 
-		# Look at the parent downloaded page to get which doctor we searched for.
-		my $parentDir = $downloadedDir;
-		$parentDir =~ s/[^\/]*\/$//;
-		my $parentFileName = $filePart;
-		# Need to cut off the last .something before the .html
-		$parentFileName =~ s/\d+\.html/html/;
-		my $parentPath = "$parentDir/$parentFileName";
-		if (-e $parentPath) {
-		    my $parentTree = HTML::Tree->new_from_file($parentPath);
-		    # Get the first word of the search.
-		    my $titleElem = $parentTree->look_down('_tag', 'title');
-		    if ($titleElem) {
-			my $title = $titleElem->as_text();
-			if ($title =~ /^(\w+)/) {
-			    my $searchName = $1;
-			    
-			    my $link = $tree->look_down(sub {
-				$_[0]->tag() eq 'a' &&
-			   	$_[0]->attr('class') eq 'link'
-							});
-			    if ($link) {
-				my $url = $link->attr('href');
-		    
-				my $content = get($url);
-		    
-				open(FO, ">$outputPath") or die "Could not open $outputPath $!";
-				print FO $content;
-				close(FO);
-
-				return $self->getOutput($doctorId, $outputPath);
-				print $outputPath."\n";
-			    } else {
-				print STDERR "Didn't find link for $searchName in $parentPath\n";
-			    }
-			} else { 
-			    print STDERR "Empty title in $parentPath\n";
-			}
-		    } else {
-			print STDERR "No title in $parentPath\n";
-		    }
-		} else {
-		    print STDERR "Didn't find parent for bad vitals page $path (parent should be $parentPath)\n";
-		}
-	}
-    }
-
-    $tree = HTML::Tree->new_from_file($path);
     if ($tree->look_down('class', 'cityspec_overview')) {
 	# We got a search page, so we need to download another one.
 	my $outputPath = $path;
@@ -297,41 +250,16 @@ sub getOutput {
 
     my ($googlePage, $googleResult) = $self->getGooglePage($path);
 
-    my ($city, $state, $zip);
+    my ($city, $state);
     $city = $state = "--";
 
-    my $addressElem = $tree->look_down('class', 'adr');
-    if ($addressElem) {
-	my $cityElem = $addressElem->look_down('class', 'locality');
-	$city = $cityElem->as_text() if $cityElem;
+    
+    my $cityElem = $tree->look_down('itemprop', 'addressLocality');
+    $city = $cityElem->as_text() if $cityElem;
 
-	my $stateElem = $addressElem->look_down('class', 'region');
-	$state = $stateElem->as_text() if $stateElem;
-    } elsif ($addressElem) {
-	# Try the /reviews version here
-	my $addressOuterElem = $tree->look_down('id', 'section_address');
-	if ($addressOuterElem) {
-	    $addressElem = $addressOuterElem->look_down('class', 'top pad_left');
-	    if ($addressElem) {
-		my @parts = split(/\<br \/\>/i, $addressElem->as_HTML());
-		($city, $state, $zip) = ParserCommon::parseCityStateZip($parts[2]);
-	    }
-	}
-    } else {
-	# Try the August 2013 review version
-	$addressElem  = $tree->look_down('_tag', 'address', 'itemprop', 'address');
-	if ($addressElem) {
-	    my $cityElem = $addressElem->look_down('_tag', 'span', 'itemprop', 'addressLocality');
-	    $city = $cityElem->as_text() if $cityElem;
-
-	    my $stateElem = $addressElem->look_down('_tag', 'span', 'itemprop', 'addressRegion');
-	    $state = $stateElem->as_text() if $stateElem;
-
-	    my $zipElem = $addressElem->look_down('_tag', 'span', 'itemprop', 'postalCode');
-	    $zip = $zipElem->as_text() if $zipElem;
-	}
-    }
-
+    my $stateElem = $tree->look_down('itemprop', 'addressRegion');
+    $state = $stateElem->as_text() if $stateElem;
+    
 
     my ($totalComments, $waitTime);
     $totalComments = $waitTime = "--";
@@ -339,60 +267,71 @@ sub getOutput {
     my %output;
     $output{"Ease-of-Appointment"} =  $output{"Promptness"} =  $output{"Courteous-Staff"} = $output{"Accurate-Diagnosis"} = $output{"Bedside-Manner"} = $output{"Spends-Time"} = $output{"Follow-Up"} = "--";
 
-    # Vitals redesigned as of August 2013, try this first
-    my $ratingSection = $tree->look_down('_tag', 'div', 'class', 'summary');
-    
-    if($ratingSection) {
-	my @ratingsTables = $ratingSection->look_down('_tag', 'td', 'class', 'questions');
-		    	    
-	foreach my $ratingsTable (@ratingsTables) {
-	    my @ratingsRow = $ratingsTable->look_down('_tag', 'tr');
-	    foreach my $ratingRow (@ratingsRow) {
-		my $label = $ratingRow->look_down('_tag', 'td', 'class', 'question');
-		my $cell = $ratingRow->look_down('_tag', 'li');
-	        $label = $label->as_text();
-	    	if ($cell) {
-		    if ($cell->as_text() =~ m/Currently\s(\d)/i) {
-	    	    	my $ratingVal = $1;
-		    	my $key = $self->getRatingsKey($label);
-	    	    	if ($key) {
-		   	    $output{$key} = $ratingVal;
-	    	    	}
-	    	    }
-	    	}
-	    }
-	}
-    }elsif ($rating ne "--") {
-	# The /name.html version of vitals
-
-	my $commentsElem = $tree->look_down('class', 'comments_container');
-	if ($commentsElem) {
-	    my $countOuterElem = $commentsElem->look_down('title', 'Find out what others are saying');
-	    if ($countOuterElem && $countOuterElem->as_text() =~ m/(\d+) comments/i) {
-		$totalComments = $1;
-	    }
-	    
-	    if ($commentsElem->as_text() =~ m/according to patient reviews, is (\d+) minutes/i) {
-		$waitTime = $1;
-	    }
-
-	    my @specificsSections = $commentsElem->look_down('class', 'pad_left bold');
-	    foreach my $specificsSection (@specificsSections) {
-		my @parts = split(/<br \/>/, $specificsSection->as_HTML());
-		foreach my $part (@parts) {
-		    $part =~ s/\<[^>]+\>//; # Strip tags
-		    if ($part =~ m/((?:\w+\s*)+).*?(\d+\.?\d*)/i) {
-			my $label = $1;
-			my $score = $2;
-			my $key = $self->getRatingsKey($label);
-			if ($key) {
-			    $output{$key} = $score;
+    my $outerElem = $tree->look_down('class','questions');
+    if ($outerElem) {
+	# The /reviews version of vitals
+	my @rows = $tree->look_down('class','question');
+	
+	foreach my $row (@rows){
+		my $label = $row->as_text;
+		
+		    my $scoreElem;
+		    my $rowElem = $row->look_up('_tag','tr');
+		    if ($label =~ m/(\d+) minutes/i){
+			$waitTime = $1;
+		    } elsif($label !~ m/Average Wait/i){
+			$scoreElem = $rowElem->look_down('class','stars');
+			my $score = $scoreElem->as_text;
+			if ($score){
+				$score =~ m/Currently (\d(\.\d+)?) of 4 stars/i;
+				my $stars = $1;
+				if ($label =~ m/Promptness/i) {
+				    $output{"Promptness"} = $stars;
+				} elsif ($label =~ m/Courteous Staff/i) {
+				    $output{"Courteous-Staff"} = $stars;
+				} elsif ($label =~ m/Ease of Appointment/i) {
+				    $output{"Ease-of-Appointment"} = $stars;
+				} elsif ($label =~ m/Accurate Diagnosis/i) {
+				    $output{"Accurate-Diagnosis"} = $stars;
+				} elsif ($label =~ m/Bedside Manner/i) {
+				    $output{"Bedside-Manner"} = $stars;
+				} elsif ($label =~ m/Spends Time with Me/i) {
+				    $output{"Spends-Time"} = $stars;
+				} elsif ($label =~ m/Follows Up After Visit/i) {
+				    $output{"Follow-Up"} = $stars;
+				}
 			}
-		    }
-		}
-	    }
-	}
-    } elsif (!$ratingSection) {
+		    }	
+	    
+    }
+	# my $commentsElem = $tree->look_down('class', 'comments_container');
+	# if ($commentsElem) {
+	    # my $countOuterElem = $commentsElem->look_down('title', 'Find out what others are saying');
+	    # if ($countOuterElem && $countOuterElem->as_text() =~ m/(\d+) comments/i) {
+		# $totalComments = $1;
+	    # }
+	    
+	    # if ($commentsElem->as_text() =~ m/according to patient reviews, is (\d+) minutes/i) {
+		# $waitTime = $1;
+	    # }
+
+	    # my @specificsSections = $commentsElem->look_down('class', 'pad_left bold');
+	    # foreach my $specificsSection (@specificsSections) {
+		# my @parts = split(/<br \/>/, $specificsSection->as_HTML());
+		# foreach my $part (@parts) {
+		    # $part =~ s/\<[^>]+\>//; # Strip tags
+		    # if ($part =~ m/((?:\w+\s*)+).*?(\d+\.?\d*)/i) {
+			# my $label = $1;
+			# my $score = $2;
+			# my $key = $self->getRatingsKey($label);
+			# if ($key) {
+			    # $output{$key} = $score;
+			# }
+		    # }
+		# }
+	    # }
+	# }
+    } else {
 	# The /reviews version of vitals
 	my $ratingSection = $tree->look_down('id', 'section_ratings');
 	if ($ratingSection) {
@@ -430,18 +369,9 @@ sub getOutput {
 	    my $waitTimeElem = $ratingSection->look_down('_tag', 'span', 'style', 'color:#FF0000; font-weight:bold');
 	    $waitTime = $waitTimeElem->as_text() if $waitTimeElem;
 	} else {
-	    print STDERR "Bad Vitals Page $path\n";
+	    print STDERR "Bad vitals page $path\n";
 	}
-    	
-    }
 
-    if ($totalComments eq "--") {
-        # There is a nother way to get these
-        my $totalCommentsOuterElem = $tree->look_down('id', 'overall_total_reviews');
-        if ($totalCommentsOuterElem) {
-            my $totalCommentsElem = $totalCommentsOuterElem->look_down('_tag', 'h3');
-            $totalComments = $totalCommentsElem->as_text() if $totalCommentsElem;
-        }
     }
 
     $output{"ID"} = $doctorId;
@@ -477,8 +407,6 @@ sub getRatingsKey {
 	return "Spends-Time";
     } elsif ($label =~ m/Follow Up/i) {
 	return "Follow-Up";
-    } elsif ($label =~ m/Wait Time/i) {
-	return "Wait-Time";
     }
 }
 

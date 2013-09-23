@@ -60,7 +60,9 @@ sub parse {
 	
 	#print "Parsing Google Search Page at $path\n";
 	my @links = $self->getSearchLinks($path);
-	
+	#foreach my $temp(@links){
+	#    print $temp."\n";
+	#}
 	# Alternates between a link and a yes/no indicating sponsored.
 	for (my $i = 0; $i < scalar(@links); $i += 2) {
 	    $totalCount++;
@@ -101,6 +103,8 @@ sub parse {
 			my $count = $totalCount - $sponsoredCounts{$docId};
 			$subpath .= ".$count.html";
 		    }
+		    # perl runner.pl -s -p 1 all ./smalldoctors.csv ./results ./results
+		    print $subparser."\n";
 		    $subparser->parse($docId, $subpath);
 		}
 	    }

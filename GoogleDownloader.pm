@@ -51,6 +51,7 @@ sub download {
 	    my %doc = %$docRef;
 	
 	    $filename = "$outfolder/$doc{'sn'}.$i.html";
+	    #$if 
 	    my $subfolder = "$outfolder/$doc{'sn'}.$i";
 
 	    # Get the first page and its links, then the next page, then pause.
@@ -72,7 +73,19 @@ sub downloadPage {
     my $mech = new WWW::Mechanize;
     eval {
 	$mech->get($url);
-		
+	# for healthgrades, vitals, and ucompare changes url to page with more extensive ratings
+	if($url =~ m/healthgrades\.com\/physician/i){
+		$mech->follow_link( url_regex => qr/patient\-ratings/i );
+	}elsif( $url =~ m/vitals.com\/doctors/i){
+		if($mech->find_link( url_regex => qr/reviews/i )){
+			$mech->follow_link( url_regex => qr/reviews/i );
+		}
+	}elsif( $url =~ m/ucomparehealthcare\.com\/drs/i){
+		if($mech->find_link( url_regex => qr/reviews/i )){
+			$mech->follow_link( url_regex => qr/reviews/i );
+		}
+	}
+	$url = $mech->uri;	
 	$mech->save_content($outfile);
 	
 	print "Wrote $url to $outfile\n";
@@ -153,7 +166,7 @@ sub getSubLinks {
 			$url =~ s/&amp;sa=.*$//;
 			$url =~ s/&sa=.*$//;
 			$url = uri_unescape($url);
-
+			
 			$self->downloadPage($url, $outfile);
 
 			$cnt++;

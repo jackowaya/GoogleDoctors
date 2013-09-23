@@ -56,14 +56,13 @@ sub getRatingFromTree {
 
     my $rating = "--";
     my $ratingCount = 0;
-    my $ratingElem = $tree->look_down('id', 'content_0_UxDoctorInfo_ctl01_currentRating');
+    my $ratingElem = $tree->look_down('itemprop','ratingValue');
     if ($ratingElem) {
-	if ($ratingElem->as_text() =~ m/Currently\s+(\d+\.?\d*)\/5\s+Stars/i) {
-	    $rating = $1;
+		$rating=$ratingElem->attr('content');
 	} else {
 	    print STDERR "Lifescript couldn't parse rating element text " . $ratingElem->as_text() . "\n";
 	}
-    }	
+    	
 
     my $countElem = $tree->look_down('id', 'content_0_UxDoctorInfo_ctl01_numOfRatings');
     $ratingCount = $countElem->as_text() if $countElem;	

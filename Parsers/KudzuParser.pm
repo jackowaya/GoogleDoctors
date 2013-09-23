@@ -111,11 +111,19 @@ sub getDataFields {
     my ($googlePage, $googleResult) = $self->getGooglePage($path);
 
     my ($city, $state, $zip);
-    my $addrElem = $tree->look_down('class', 'adr');
-    if ($addrElem) {
-	my @parts = split(/\<br \/\>/i, $addrElem->as_HTML());
-	($city, $state, $zip) = ParserCommon::parseCityStateZip($parts[1]);
+    my $addrLocal = $tree->look_down('itemprop', 'addressLocality');
+    if ($addrLocal) {
+	$city = $addrLocal->as_text();
     }
+    my $addrRegion = $tree->look_down('itemprop', 'addressRegion');
+    if ($addrRegion) {
+	$state = $addrRegion->as_text();
+    }
+    my $addrZip = $tree->look_down('itemprop', 'postalCode');
+    if ($addrZip) {
+	$zip = $addrZip->as_text();
+    }
+
 
     my %output;
     $output{"ID"} = $doctorId;

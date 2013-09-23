@@ -45,6 +45,7 @@ sub getNameFromTree {
     }
 
     my $fullName = $nameElem->as_text();
+    $fullName =~ s/Dr. //i;
     return ParserCommon::parseName($fullName);
 }
 
@@ -54,55 +55,55 @@ sub getRatingFromTree {
 
     my $rating = "--";
     my $ratingCount = 0;
-    # RateMds Redesigned their site in August 2013. Try this one first
-    my $ratingOuterElem = $tree->look_down('_tag', 'span', 'class', "rating");
-    if ($ratingOuterElem) {
-    	my $ratingElem = $ratingOuterElem->look_down('class', 'average');
-	$rating = $ratingElem->as_text() if $ratingElem;
     
-    	my $countElem = $ratingOuterElem->look_down('class', 'count');
- 	$ratingCount = $countElem->as_text() if $countElem;
+    my $ratingElem = $tree->look_down('class','average');
+    if($ratingElem){
+	$rating = $ratingElem->as_text();
+    }
+    my $ratingCountElem = $tree->look_down('class','count');
+    if($ratingCountElem){
+	$ratingCount = $ratingCountElem->as_text();
+    }
     
-	return $rating, $ratingCount;
-    }
-
-    # RateMds redesigned their site in November 2012. Try the new one first
-    $ratingOuterElem = $tree->look_down('_tag', 'p', 'class', 'rating');
-    if ($ratingOuterElem) {
-    	my $ratingElem = $ratingOuterElem->look_down('class', 'average');
-	$rating = $ratingElem->as_text() if $ratingElem;
     
-    	my $countElem = $ratingOuterElem->look_down('class', 'count');
- 	$ratingCount = $countElem->as_text() if $countElem;
     
-	return $rating, $ratingCount;
-    }
+    # # RateMds redesigned their site in November 2012. Try the new one first
+    # my $ratingOuterElem = $tree->look_down('_tag', 'p', 'class', 'rating');
+    # if ($ratingOuterElem) {
+	# my $ratingElem = $ratingOuterElem->look_down('class', 'average');
+	# $rating = $ratingElem->as_text() if $ratingElem;
 
-    # The last one that matches is the one we want.
-    my @ratingRows = $tree->look_down(sub {
-         $_[0]->tag() eq 'tr' &&
-         $_[0]->as_text() =~ m/Overall\s+Quality\*/
-    });
-    my $ratingRow = pop(@ratingRows);
+	# my $countElem = $ratingOuterElem->look_down('class', 'count');
+	# $ratingCount = $countElem->as_text() if $countElem;
 
-    if ($ratingRow) {
-	# May not have ratings yet.
-	my @ratingRowCells = $ratingRow->look_down('_tag', 'td');
-	$rating = $ratingRowCells[2]->as_text();
-    }
+	# return $rating, $ratingCount;
+    # }
 
-    # The last one that matches is the one we want.
-    my @countRows = $tree->look_down(sub {
-         $_[0]->tag() eq 'tr' &&
-         $_[0]->as_text() =~ m/#\s+Ratings/
-    });
-    my $countRow = pop(@countRows);
+    # # The last one that matches is the one we want.
+    # my @ratingRows = $tree->look_down(sub {
+         # $_[0]->tag() eq 'tr' &&
+         # $_[0]->as_text() =~ m/Overall\s+Quality\*/
+    # });
+    # my $ratingRow = pop(@ratingRows);
 
-    if ($countRow) {
-	# May not have ratings yet.
-	my @countRowCells = $countRow->look_down('_tag', 'td');
-	$ratingCount = $countRowCells[2]->as_text();
-    }
+    # if ($ratingRow) {
+	# # May not have ratings yet.
+	# my @ratingRowCells = $ratingRow->look_down('_tag', 'td');
+	# $rating = $ratingRowCells[2]->as_text();
+    # }
+
+    # # The last one that matches is the one we want.
+    # my @countRows = $tree->look_down(sub {
+         # $_[0]->tag() eq 'tr' &&
+         # $_[0]->as_text() =~ m/#\s+Ratings/
+    # });
+    # my $countRow = pop(@countRows);
+
+    # if ($countRow) {
+	# # May not have ratings yet.
+	# my @countRowCells = $countRow->look_down('_tag', 'td');
+	# $ratingCount = $countRowCells[2]->as_text();
+    # }
     
     return $rating, $ratingCount;
 }

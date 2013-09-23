@@ -67,34 +67,32 @@ sub getRatingFromTree {
     my $self = shift;
     my $tree = shift;
 
-    my $ratingBlock = $tree->look_down('id', 'bizRating');
+    my $ratingBlock = $tree->look_down('itemprop', 'ratingValue');
     my $rating = "--";
     my $ratingCount = 0;
     if ($ratingBlock) {
-	my $ratingElem = $ratingBlock->look_down('class', 'rating average');
-	if ($ratingElem) {
-	    my $strRating = $ratingElem->attr('title');
-	    $strRating =~ m/(\d+\.?\d*)/;
-	    $rating = $1;
+	
+	    my $strRating = $ratingBlock->attr('content');
+	    $rating = $strRating;
 	    
-	    my $outerCountElem = $ratingBlock->look_down('class', 'review-count');
-	    my $countElem = $outerCountElem->look_down('class', 'count');
+	    my $countElem = $tree->look_down('class', 'review-count');
 	    $ratingCount = $countElem->as_text();
-	} else {
-	    # Another type of yelp page.
-	    my $ratingElem = $ratingBlock->look_down(sub {
-		$_[0]->tag() eq 'img' && $_[0]->attr('title') =~ m/star rating/});
-	    if ($ratingElem) {
-		$rating = $ratingElem->attr('title');
-		$rating =~ s/\s*star rating\s*//i;
-	    }
-	    my $countElem = $tree->look_down(sub {
-		$_[0]->tag() eq 'span' && $_[0]->attr('itemprop') eq 'reviewCount'});
-	    if ($countElem) {
-		$ratingCount = $countElem->as_text();
-	    }
 	}
-    } 
+	# } else {
+	    # # Another type of yelp page.
+	    # my $ratingElem = $ratingBlock->look_down(sub {
+		# $_[0]->tag() eq 'img' && $_[0]->attr('title') =~ m/star rating/});
+	    # if ($ratingElem) {
+		# $rating = $ratingElem->attr('title');
+		# $rating =~ s/\s*star rating\s*//i;
+	    # }
+	    # my $countElem = $tree->look_down(sub {
+		# $_[0]->tag() eq 'span' && $_[0]->attr('itemprop') eq 'reviewCount'});
+	    # if ($countElem) {
+		# $ratingCount = $countElem->as_text();
+	    # }
+	
+    # } 
 
     return $rating, $ratingCount;
 }
