@@ -61,6 +61,11 @@ sub getDataFields {
     my $doctorId = shift;
     my $path = shift;
 
+    if (! -e $path) {
+	print STDERR "Could not find requested path $path\n";
+	return 0;
+    }
+
     my $tree = HTML::Tree->new_from_file($path);
 
     my ($firstName, $lastName) = $self->getNameFromTree($tree, $path);

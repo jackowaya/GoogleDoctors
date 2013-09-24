@@ -109,6 +109,12 @@ sub getDataFields {
     die "Cannot parse before init is called" unless $self->{INITED};
     my $doctorId = shift;
     my $path = shift;
+
+    if (! -e $path) {
+	print STDERR "Could not find requested path $path\n";
+	return 0;
+    }
+
     my $tree = HTML::Tree->new_from_file($path);
 
     my $surveyLink = $tree->look_down('data-hgoname', 'quality-survey-results-has-surveys');

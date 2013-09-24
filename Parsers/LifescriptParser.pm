@@ -60,7 +60,7 @@ sub getRatingFromTree {
     if ($ratingElem) {
 		$rating=$ratingElem->attr('content');
 	} else {
-	    print STDERR "Lifescript couldn't parse rating element text " . $ratingElem->as_text() . "\n";
+	    print STDERR "Lifescript couldn't find rating element\n";
 	}
     	
 
@@ -78,6 +78,12 @@ sub getDataFields {
     die "Cannot parse before init is called" unless $self->{INITED};
     my $doctorId = shift;
     my $path = shift;
+
+    if (! -e $path) {
+	print STDERR "Could not find requested path $path\n";
+	return 0;
+    }
+
     my $tree = HTML::Tree->new_from_file($path);
  
     my ($firstName, $lastName) = $self->getNameFromTree($tree, $path);
